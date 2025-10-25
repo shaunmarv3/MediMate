@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Stethoscope, AlertCircle, Loader2, Sparkles, Send, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, doc, getDoc, setDoc, increment } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
 export default function SymptomsPage() {
@@ -18,13 +18,68 @@ export default function SymptomsPage() {
     latestMetrics: null,
     dataLoaded: false
   });
+  const [apiUsage, setApiUsage] = useState({ count: 0, date: null, loading: true });
 
-  // Fetch user's health data
+  // Check API usage limit
+  const checkApiLimit = async () => {
+    if (!user) return true;
+
+    try {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const usageRef = doc(db, 'users', user.uid, 'apiUsage', 'gemini');
+      const usageDoc = await getDoc(usageRef);
+
+      if (usageDoc.exists()) {
+        const data = usageDoc.data();
+        // Check if it's the same day
+        if (data.date === today) {
+          setApiUsage({ count: data.count, date: today, loading: false });
+          return data.count < 10; // Daily limit
+        } else {
+          // New day, reset counter
+          await setDoc(usageRef, { count: 0, date: today });
+          setApiUsage({ count: 0, date: today, loading: false });
+          return true;
+        }
+      } else {
+        // First time use
+        await setDoc(usageRef, { count: 0, date: today });
+        setApiUsage({ count: 0, date: today, loading: false });
+        return true;
+      }
+    } catch (error) {
+      console.error('Error checking API limit:', error);
+      return true; // Allow on error
+    }
+  };
+
+  // Increment API usage counter
+  const incrementApiUsage = async () => {
+    if (!user) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const usageRef = doc(db, 'users', user.uid, 'apiUsage', 'gemini');
+      await setDoc(usageRef, {
+        count: increment(1),
+        date: today
+      }, { merge: true });
+
+      // Update local state
+      setApiUsage(prev => ({ ...prev, count: prev.count + 1 }));
+    } catch (error) {
+      console.error('Error incrementing API usage:', error);
+    }
+  };
+
+  // Fetch user's health data and check API limit
   useEffect(() => {
     const fetchHealthData = async () => {
       if (!user) return;
 
       try {
+        // Check API limit first
+        await checkApiLimit();
         // Fetch medications from users/{userId}/medications subcollection
         const medicationsRef = collection(db, 'users', user.uid, 'medications');
         const medicationsSnapshot = await getDocs(medicationsRef);
@@ -71,6 +126,15 @@ export default function SymptomsPage() {
 
     if (!symptomInput.trim()) {
       toast.error('Please describe your symptoms');
+      return;
+    }
+
+    // Check API limit before proceeding
+    const canUseApi = await checkApiLimit();
+    if (!canUseApi) {
+      toast.error('Daily limit reached! You can use the AI symptom checker 10 times per day. Please try again tomorrow.', {
+        duration: 5000,
+      });
       return;
     }
 
@@ -196,6 +260,9 @@ FORMAT: No markdown (**,##,---). Use dashes (-) for bullets. Number sections (1.
           .replace(/\n{3,}/g, '\n\n');    // Replace multiple newlines with double newline
 
         setResult(cleanedResponse);
+
+        // Increment API usage count after successful response
+        await incrementApiUsage();
       } else {
         throw new Error('No response generated');
       }
@@ -276,6 +343,60 @@ FORMAT: No markdown (**,##,---). Use dashes (-) for bullets. Number sections (1.
                         {userHealthData.medications.length > 0 && userHealthData.latestMetrics && ' and '}
                         {userHealthData.latestMetrics && 'health metrics'} for better recommendations
                       </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* API Usage Counter */}
+              {!apiUsage.loading && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className={`mb-6 p-4 rounded-xl border ${apiUsage.count >= 10
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                      : apiUsage.count >= 7
+                        ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                        : 'bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-700'
+                    }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Sparkles className={`w-5 h-5 ${apiUsage.count >= 10
+                          ? 'text-red-600 dark:text-red-400'
+                          : apiUsage.count >= 7
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-slate-600 dark:text-slate-400'
+                        }`} />
+                      <div>
+                        <p className={`text-sm font-medium ${apiUsage.count >= 10
+                            ? 'text-red-900 dark:text-red-100'
+                            : apiUsage.count >= 7
+                              ? 'text-amber-900 dark:text-amber-100'
+                              : 'text-slate-900 dark:text-slate-100'
+                          }`}>
+                          AI Usage Today
+                        </p>
+                        <p className={`text-xs mt-0.5 ${apiUsage.count >= 10
+                            ? 'text-red-700 dark:text-red-300'
+                            : apiUsage.count >= 7
+                              ? 'text-amber-700 dark:text-amber-300'
+                              : 'text-slate-600 dark:text-slate-400'
+                          }`}>
+                          {apiUsage.count >= 10
+                            ? 'Daily limit reached. Resets tomorrow.'
+                            : `${apiUsage.count} of 10 queries used`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`text-2xl font-bold ${apiUsage.count >= 10
+                        ? 'text-red-600 dark:text-red-400'
+                        : apiUsage.count >= 7
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-slate-600 dark:text-slate-400'
+                      }`}>
+                      {10 - apiUsage.count}
                     </div>
                   </div>
                 </motion.div>

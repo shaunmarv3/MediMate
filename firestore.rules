@@ -44,6 +44,11 @@ service cloud.firestore {
       match /symptoms/{symptomId} {
         allow read, write: if isAuthenticated() && isOwner(userId);
       }
+      
+      // API Usage subcollection (for rate limiting)
+      match /apiUsage/{apiType} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
     }
   }
 }
