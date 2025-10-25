@@ -1,14 +1,70 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Stethoscope, AlertCircle, Loader2, Sparkles, Send } from 'lucide-react';
+import { Stethoscope, AlertCircle, Loader2, Sparkles, Send, Activity } from 'lucide-react';
 import { toast } from 'sonner';
+import { auth, db } from '@/lib/firebase';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 export default function SymptomsPage() {
+  const [user] = useAuthState(auth);
   const [symptomInput, setSymptomInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [userHealthData, setUserHealthData] = useState({
+    medications: [],
+    latestMetrics: null,
+    dataLoaded: false
+  });
+
+  // Fetch user's health data
+  useEffect(() => {
+    const fetchHealthData = async () => {
+      if (!user) return;
+
+      try {
+        // Fetch medications from users/{userId}/medications subcollection
+        const medicationsRef = collection(db, 'users', user.uid, 'medications');
+        const medicationsSnapshot = await getDocs(medicationsRef);
+        const medications = medicationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        // Fetch all metrics from users/{userId}/metrics subcollection
+        const metricsRef = collection(db, 'users', user.uid, 'metrics');
+        const metricsSnapshot = await getDocs(metricsRef);
+
+        // Aggregate metrics by type, keeping the most recent for each type
+        const metricsMap = {};
+        metricsSnapshot.docs.forEach(doc => {
+          const data = doc.data();
+          const type = data.type;
+          const timestamp = data.timestamp;
+
+          if (!metricsMap[type] || timestamp > metricsMap[type].timestamp) {
+            metricsMap[type] = {
+              value: data.value,
+              timestamp: timestamp
+            };
+          }
+        });
+
+        setUserHealthData({
+          medications,
+          latestMetrics: Object.keys(metricsMap).length > 0 ? metricsMap : null,
+          dataLoaded: true
+        });
+      } catch (error) {
+        console.error('Error fetching health data:', error);
+        setUserHealthData(prev => ({ ...prev, dataLoaded: true }));
+      }
+    };
+
+    fetchHealthData();
+  }, [user]);
 
   const analyzeSymptoms = async (e) => {
     e.preventDefault();
@@ -31,33 +87,76 @@ export default function SymptomsPage() {
 
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
 
+      // Build personalized context
+      let personalizedContext = '';
+
+      if (userHealthData.dataLoaded) {
+        // Add medication information if available
+        if (userHealthData.medications && userHealthData.medications.length > 0) {
+          const medicationList = userHealthData.medications
+            .map(med => `${med.name} (${med.dosage}, ${med.schedule?.[0]?.repeat || 'as needed'})`)
+            .join(', ');
+          personalizedContext += `\n\nCurrent Medications: ${medicationList}`;
+        }
+
+        // Add latest health metrics if available
+        if (userHealthData.latestMetrics) {
+          const metrics = userHealthData.latestMetrics;
+          const metricsList = [];
+
+          if (metrics.weight) metricsList.push(`Weight: ${metrics.weight.value} kg`);
+          if (metrics.heartRate) metricsList.push(`Heart Rate: ${metrics.heartRate.value} bpm`);
+          if (metrics.bloodPressure) metricsList.push(`Blood Pressure: ${metrics.bloodPressure.value}`);
+          if (metrics.steps) metricsList.push(`Daily Steps: ${metrics.steps.value}`);
+          if (metrics.sleepHours) metricsList.push(`Sleep: ${metrics.sleepHours.value} hours`);
+          if (metrics.bloodSugar) metricsList.push(`Blood Sugar: ${metrics.bloodSugar.value} mg/dL`);
+          if (metrics.oxygen) metricsList.push(`Oxygen Level: ${metrics.oxygen.value}%`);
+
+          if (metricsList.length > 0) {
+            personalizedContext += `\n\nRecent Health Metrics: ${metricsList.join(', ')}`;
+          }
+        }
+      }
+
+      const promptText = personalizedContext
+        ? `You are a medical information assistant. Analyze these symptoms with PERSONALIZED guidance:
+
+${symptomInput}
+${personalizedContext}
+
+Provide a complete response with ALL sections below. Consider medications and health metrics:
+
+1. Symptom Analysis (consider patient's health profile)
+2. Possible Causes (possibilities, not diagnosis)
+3. Medication Considerations (check side effects/interactions with current meds)
+4. Food Recommendations (what to eat and avoid)
+5. Self-Care Tips (tailored to health profile)
+6. When to Seek Medical Attention
+
+FORMAT: No markdown (**,##,---). Use dashes (-) for bullets. Number sections (1.,2.,3.). Keep clear and structured.`
+        : `You are a medical information assistant. Analyze these symptoms:
+
+${symptomInput}
+
+Provide a complete response with ALL sections:
+
+1. Symptom Analysis
+2. Possible Causes (possibilities, not diagnosis)
+3. Food Recommendations (what to eat and avoid)
+4. Self-Care Tips
+5. When to Seek Medical Attention
+
+FORMAT: No markdown (**,##,---). Use dashes (-) for bullets. Number sections (1.,2.,3.). Keep clear and structured.`;
+
       const requestBody = {
         contents: [{
           parts: [{
-            text: `As a medical information assistant, analyze the following symptoms and provide helpful guidance:
-
-Symptoms: ${symptomInput}
-
-Please provide a comprehensive response including:
-1. Brief analysis of the symptoms
-2. Possible causes (mention these are possibilities, not a diagnosis)
-3. Recommended food items to eat and foods to avoid for this condition
-4. Self-care recommendations
-5. When to seek immediate medical attention
-
-IMPORTANT FORMATTING RULES:
-- Do NOT use markdown symbols like **, ##, ---, or ***
-- Use plain text only
-- Use simple bullet points with dashes (-)
-- Use numbers for main sections (1., 2., 3.)
-- Keep the response clear, concise, and easy to read
-- Format it in a well-structured way with clear sections
-- Use line breaks between sections for readability`
+            text: promptText
           }]
         }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
         }
       };
 
@@ -77,6 +176,13 @@ IMPORTANT FORMATTING RULES:
       }
 
       const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const finishReason = data.candidates?.[0]?.finishReason;
+
+      // Check if response was cut off
+      if (finishReason === 'MAX_TOKENS') {
+        console.warn('Response was truncated due to token limit');
+        toast.warning('Response was very long and may be incomplete. Consider asking more specific questions.');
+      }
 
       if (textResponse) {
         // Clean up markdown formatting
@@ -142,7 +248,7 @@ IMPORTANT FORMATTING RULES:
             <>
               <div className="flex items-start space-x-3 mb-6">
                 <Sparkles className="w-6 h-6 text-cyan-500 shrink-0 mt-1" />
-                <div>
+                <div className="flex-1">
                   <h2 className="text-xl font-display font-bold text-slate-900 dark:text-white mb-2">
                     Describe Your Symptoms
                   </h2>
@@ -151,6 +257,29 @@ IMPORTANT FORMATTING RULES:
                   </p>
                 </div>
               </div>
+
+              {/* Personalization Status */}
+              {userHealthData.dataLoaded && (userHealthData.medications.length > 0 || userHealthData.latestMetrics) && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="mb-6 p-4 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-xl"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Activity className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-cyan-900 dark:text-cyan-100">
+                        Personalized Analysis Enabled
+                      </p>
+                      <p className="text-xs text-cyan-700 dark:text-cyan-300 mt-0.5">
+                        AI will consider your {userHealthData.medications.length > 0 && 'medications'}
+                        {userHealthData.medications.length > 0 && userHealthData.latestMetrics && ' and '}
+                        {userHealthData.latestMetrics && 'health metrics'} for better recommendations
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
               <form onSubmit={analyzeSymptoms} className="space-y-6">
                 <div>
@@ -196,7 +325,7 @@ IMPORTANT FORMATTING RULES:
               animate={{ opacity: 1 }}
               className="space-y-6"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                 <div className="flex items-center space-x-3">
                   <div className="p-3 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
                     <Stethoscope className="w-6 h-6 text-primary-600 dark:text-primary-400" />
@@ -210,6 +339,21 @@ IMPORTANT FORMATTING RULES:
                     </p>
                   </div>
                 </div>
+
+                {/* Personalization Badge */}
+                {userHealthData.dataLoaded && (userHealthData.medications.length > 0 || userHealthData.latestMetrics) && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="flex items-center space-x-2 px-3 py-1.5 bg-cyan-100 dark:bg-cyan-900/30 border border-cyan-300 dark:border-cyan-700 rounded-full"
+                  >
+                    <Activity className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                    <span className="text-xs font-medium text-cyan-700 dark:text-cyan-300">
+                      Personalized
+                    </span>
+                  </motion.div>
+                )}
               </div>
 
               {/* AI Response */}
