@@ -5,7 +5,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
-import { User, Mail, Calendar, MapPin, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, userData } = useAuth();
@@ -77,30 +77,24 @@ export default function ProfilePage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="label">Full Name</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  value={formData.displayName}
-                  onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                  className="input-field pl-10"
-                  placeholder="John Doe"
-                  required
-                />
-              </div>
+              <input
+                type="text"
+                value={formData.displayName}
+                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                className="input-field"
+                placeholder="John Doe"
+                required
+              />
             </div>
 
             <div>
               <label className="label">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  value={user?.email || ''}
-                  className="input-field pl-10 bg-slate-100 dark:bg-slate-800 cursor-not-allowed"
-                  disabled
-                />
-              </div>
+              <input
+                type="email"
+                value={user?.email || ''}
+                className="input-field bg-slate-100 dark:bg-slate-800 cursor-not-allowed"
+                disabled
+              />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Email cannot be changed
               </p>
@@ -108,15 +102,12 @@ export default function ProfilePage() {
 
             <div>
               <label className="label">Date of Birth</label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="date"
-                  value={formData.dob}
-                  onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                  className="input-field pl-10"
-                />
-              </div>
+              <input
+                type="date"
+                value={formData.dob}
+                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                className="input-field"
+              />
             </div>
 
             <div>
@@ -133,16 +124,13 @@ export default function ProfilePage() {
 
             <div>
               <label className="label">Timezone</label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  value={formData.timezone}
-                  onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                  className="input-field pl-10"
-                  placeholder="America/New_York"
-                />
-              </div>
+              <input
+                type="text"
+                value={formData.timezone}
+                onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                className="input-field"
+                placeholder="America/New_York"
+              />
             </div>
 
             <button

@@ -234,18 +234,20 @@ html {
 
 .input-field {
   width: 100%;
-  padding: 0.625rem 1rem;
+  padding: 0.75rem 1rem;
   border-radius: 0.75rem;
   border: 1px solid rgb(203 213 225);
   background-color: white;
   color: rgb(15 23 42);
   transition: all 0.2s;
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 
 .input-field:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgb(6 182 212);
-  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+  border-color: rgb(6 182 212);
 }
 
 .input-field::placeholder {
@@ -256,6 +258,11 @@ html {
   border-color: rgb(71 85 105);
   background-color: rgb(30 41 59);
   color: rgb(241 245 249);
+}
+
+.dark .input-field:focus {
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
+  border-color: rgb(34 211 238);
 }
 
 .dark .input-field::placeholder {
