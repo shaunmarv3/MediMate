@@ -64,10 +64,10 @@ export default function DashboardNav() {
     <>
       {/* Top Navigation */}
       <nav className="glass border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo & Mobile Menu Button */}
-            <div className="flex items-center space-x-4">
+            {/* Left Side - Logo & Mobile Menu Button */}
+            <div className="flex items-center space-x-3 shrink-0">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -76,17 +76,17 @@ export default function DashboardNav() {
               </button>
 
               <Link href="/dashboard" className="flex items-center space-x-2">
-                <div className="bg-gradient-to-br from-cyan-500 to-purple-500 p-2 rounded-xl">
+                <div className="bg-linear-to-br from-cyan-500 to-purple-500 p-2 rounded-xl">
                   <Heart className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-display font-bold bg-gradient-to-r from-cyan-600 to-purple-600 bg-clip-text text-transparent hidden sm:block">
+                <span className="text-xl font-display font-bold bg-linear-to-r from-cyan-600 to-purple-600 bg-clip-text text-transparent">
                   MediMate
                 </span>
               </Link>
             </div>
 
-            {/* Right Side */}
-            <div className="flex items-center space-x-3">
+            {/* Right Side - Notifications & User Profile */}
+            <div className="flex items-center space-x-3 shrink-0">
               <div className="relative">
                 <button
                   onClick={() => setNotificationOpen(!notificationOpen)}
@@ -187,15 +187,15 @@ export default function DashboardNav() {
               </div>
 
               <div className="flex items-center space-x-3 pl-3 border-l border-slate-300 dark:border-slate-600">
-                <div className="hidden sm:block text-right">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                <div className="hidden md:block text-right">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate max-w-[150px]">
                     {userData?.displayName || 'User'}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
                     {user?.email}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-semibold">
+                <div className="w-10 h-10 rounded-full bg-linear-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-semibold shrink-0">
                   {userData?.displayName?.charAt(0) || 'U'}
                 </div>
               </div>
@@ -240,8 +240,8 @@ export default function DashboardNav() {
                         href={item.href}
                         onClick={() => setSidebarOpen(false)}
                         className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${isActive
-                            ? 'bg-cyan-500 text-white shadow-md'
-                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          ? 'bg-cyan-500 text-white shadow-md'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                           }`}
                       >
                         <item.icon className="w-5 h-5" />
@@ -275,8 +275,8 @@ export default function DashboardNav() {
                   key={item.name}
                   href={item.href}
                   className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${isActive
-                      ? 'bg-cyan-500 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    ? 'bg-cyan-500 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                     }`}
                 >
                   <item.icon className="w-5 h-5" />

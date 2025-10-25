@@ -41,10 +41,18 @@ Symptoms: ${symptomInput}
 Please provide a comprehensive response including:
 1. Brief analysis of the symptoms
 2. Possible causes (mention these are possibilities, not a diagnosis)
-3. Self-care recommendations
-4. When to seek immediate medical attention
+3. Recommended food items to eat and foods to avoid for this condition
+4. Self-care recommendations
+5. When to seek immediate medical attention
 
-Keep the response clear, concise, and easy to understand. Format it in a structured way with clear sections.`
+IMPORTANT FORMATTING RULES:
+- Do NOT use markdown symbols like **, ##, ---, or ***
+- Use plain text only
+- Use simple bullet points with dashes (-)
+- Use numbers for main sections (1., 2., 3.)
+- Keep the response clear, concise, and easy to read
+- Format it in a well-structured way with clear sections
+- Use line breaks between sections for readability`
           }]
         }],
         generationConfig: {
@@ -71,7 +79,17 @@ Keep the response clear, concise, and easy to understand. Format it in a structu
       const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
       if (textResponse) {
-        setResult(textResponse);
+        // Clean up markdown formatting
+        const cleanedResponse = textResponse
+          .replace(/\*\*/g, '')           // Remove bold **
+          .replace(/\*/g, '')             // Remove italic *
+          .replace(/###/g, '')            // Remove ### headers
+          .replace(/##/g, '')             // Remove ## headers
+          .replace(/#/g, '')              // Remove # headers
+          .replace(/---/g, '')            // Remove horizontal lines
+          .replace(/\n{3,}/g, '\n\n');    // Replace multiple newlines with double newline
+
+        setResult(cleanedResponse);
       } else {
         throw new Error('No response generated');
       }
@@ -195,11 +213,38 @@ Keep the response clear, concise, and easy to understand. Format it in a structu
               </div>
 
               {/* AI Response */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-6">
-                <div className="prose prose-slate dark:prose-invert max-w-none">
-                  <div className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {result}
-                  </div>
+              <div className="bg-linear-to-br from-slate-50 to-cyan-50/30 dark:from-slate-900/50 dark:to-cyan-900/10 rounded-xl p-8 border border-slate-200 dark:border-slate-700">
+                <div className="text-slate-800 dark:text-slate-200 leading-loose space-y-4" style={{ fontSize: '15px', lineHeight: '1.8' }}>
+                  {result.split('\n').map((line, index) => {
+                    // Skip empty lines
+                    if (!line.trim()) return <div key={index} className="h-2"></div>;
+
+                    // Main numbered sections (1., 2., 3., etc.)
+                    if (/^\d+\./.test(line.trim())) {
+                      return (
+                        <div key={index} className="font-semibold text-cyan-700 dark:text-cyan-400 text-lg mt-6 mb-2">
+                          {line}
+                        </div>
+                      );
+                    }
+
+                    // Bullet points or list items starting with -
+                    if (line.trim().startsWith('-')) {
+                      return (
+                        <div key={index} className="ml-6 flex items-start space-x-2">
+                          <span className="text-cyan-500 dark:text-cyan-400 mt-1">•</span>
+                          <span className="flex-1">{line.replace(/^-\s*/, '')}</span>
+                        </div>
+                      );
+                    }
+
+                    // Regular paragraphs
+                    return (
+                      <div key={index} className="text-slate-700 dark:text-slate-300">
+                        {line}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
