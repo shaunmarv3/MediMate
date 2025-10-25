@@ -20,30 +20,29 @@ export default function SymptomsPage() {
   });
   const [apiUsage, setApiUsage] = useState({ count: 0, date: null, loading: true });
 
-  // Check API usage limit
+  // Check GLOBAL API usage limit (10 total queries per day across all users)
   const checkApiLimit = async () => {
-    if (!user) return true;
-
     try {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-      const usageRef = doc(db, 'users', user.uid, 'apiUsage', 'gemini');
-      const usageDoc = await getDoc(usageRef);
+      // Use a global counter instead of per-user
+      const globalUsageRef = doc(db, 'globalApiUsage', 'gemini');
+      const usageDoc = await getDoc(globalUsageRef);
 
       if (usageDoc.exists()) {
         const data = usageDoc.data();
         // Check if it's the same day
         if (data.date === today) {
           setApiUsage({ count: data.count, date: today, loading: false });
-          return data.count < 10; // Daily limit
+          return data.count < 10; // Global daily limit
         } else {
           // New day, reset counter
-          await setDoc(usageRef, { count: 0, date: today });
+          await setDoc(globalUsageRef, { count: 0, date: today });
           setApiUsage({ count: 0, date: today, loading: false });
           return true;
         }
       } else {
         // First time use
-        await setDoc(usageRef, { count: 0, date: today });
+        await setDoc(globalUsageRef, { count: 0, date: today });
         setApiUsage({ count: 0, date: today, loading: false });
         return true;
       }
@@ -53,14 +52,13 @@ export default function SymptomsPage() {
     }
   };
 
-  // Increment API usage counter
+  // Increment GLOBAL API usage counter
   const incrementApiUsage = async () => {
-    if (!user) return;
-
     try {
       const today = new Date().toISOString().split('T')[0];
-      const usageRef = doc(db, 'users', user.uid, 'apiUsage', 'gemini');
-      await setDoc(usageRef, {
+      // Use global counter
+      const globalUsageRef = doc(db, 'globalApiUsage', 'gemini');
+      await setDoc(globalUsageRef, {
         count: increment(1),
         date: today
       }, { merge: true });
@@ -132,7 +130,7 @@ export default function SymptomsPage() {
     // Check API limit before proceeding
     const canUseApi = await checkApiLimit();
     if (!canUseApi) {
-      toast.error('Daily limit reached! You can use the AI symptom checker 10 times per day. Please try again tomorrow.', {
+      toast.error('Global daily limit reached! The AI symptom checker has reached its limit of 10 queries today. Please try again tomorrow.', {
         duration: 5000,
       });
       return;
@@ -354,34 +352,34 @@ FORMAT: No markdown (**,##,---). Use dashes (-) for bullets. Number sections (1.
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className={`mb-6 p-4 rounded-xl border ${apiUsage.count >= 10
-                      ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                      : apiUsage.count >= 7
-                        ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-                        : 'bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-700'
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                    : apiUsage.count >= 7
+                      ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                      : 'bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-700'
                     }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Sparkles className={`w-5 h-5 ${apiUsage.count >= 10
-                          ? 'text-red-600 dark:text-red-400'
-                          : apiUsage.count >= 7
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-slate-600 dark:text-slate-400'
+                        ? 'text-red-600 dark:text-red-400'
+                        : apiUsage.count >= 7
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-slate-600 dark:text-slate-400'
                         }`} />
                       <div>
                         <p className={`text-sm font-medium ${apiUsage.count >= 10
-                            ? 'text-red-900 dark:text-red-100'
-                            : apiUsage.count >= 7
-                              ? 'text-amber-900 dark:text-amber-100'
-                              : 'text-slate-900 dark:text-slate-100'
+                          ? 'text-red-900 dark:text-red-100'
+                          : apiUsage.count >= 7
+                            ? 'text-amber-900 dark:text-amber-100'
+                            : 'text-slate-900 dark:text-slate-100'
                           }`}>
                           AI Usage Today
                         </p>
                         <p className={`text-xs mt-0.5 ${apiUsage.count >= 10
-                            ? 'text-red-700 dark:text-red-300'
-                            : apiUsage.count >= 7
-                              ? 'text-amber-700 dark:text-amber-300'
-                              : 'text-slate-600 dark:text-slate-400'
+                          ? 'text-red-700 dark:text-red-300'
+                          : apiUsage.count >= 7
+                            ? 'text-amber-700 dark:text-amber-300'
+                            : 'text-slate-600 dark:text-slate-400'
                           }`}>
                           {apiUsage.count >= 10
                             ? 'Daily limit reached. Resets tomorrow.'
@@ -391,10 +389,10 @@ FORMAT: No markdown (**,##,---). Use dashes (-) for bullets. Number sections (1.
                       </div>
                     </div>
                     <div className={`text-2xl font-bold ${apiUsage.count >= 10
-                        ? 'text-red-600 dark:text-red-400'
-                        : apiUsage.count >= 7
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-slate-600 dark:text-slate-400'
+                      ? 'text-red-600 dark:text-red-400'
+                      : apiUsage.count >= 7
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-slate-600 dark:text-slate-400'
                       }`}>
                       {10 - apiUsage.count}
                     </div>

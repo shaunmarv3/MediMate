@@ -127,24 +127,16 @@ export default function Home() {
               </span>
             </motion.div>
 
-            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 shrink-0">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link
-                href="/login"
-                className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors text-sm sm:text-base whitespace-nowrap"
+                href="/signup"
+                className="btn-primary inline-flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2.5 whitespace-nowrap"
               >
-                Sign In
+                <span className="hidden xs:inline">Get Started</span>
+                <span className="inline xs:hidden">Start</span>
+                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Link>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link
-                  href="/signup"
-                  className="btn-primary inline-flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2.5 whitespace-nowrap"
-                >
-                  <span className="hidden xs:inline">Get Started</span>
-                  <span className="inline xs:hidden">Start</span>
-                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                </Link>
-              </motion.div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </nav>

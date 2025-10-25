@@ -11,6 +11,11 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
+    // Global API Usage collection (accessible by all authenticated users)
+    match /globalApiUsage/{apiType} {
+      allow read, write: if isAuthenticated();
+    }
+    
     // Users collection
     match /users/{userId} {
       allow read, write: if isAuthenticated() && isOwner(userId);
