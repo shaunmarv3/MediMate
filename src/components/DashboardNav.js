@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
@@ -19,14 +19,41 @@ import {
   Moon,
   Sun,
   Bell,
+  Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { getUpcomingDosesForToday } from '@/lib/notifications';
 
 export default function DashboardNav() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [medications, setMedications] = useState([]);
+  const [upcomingDoses, setUpcomingDoses] = useState([]);
   const { user, userData, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, 'users', user.uid, 'medications'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const meds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMedications(meds);
+
+      // Calculate upcoming doses
+      const upcoming = getUpcomingDosesForToday(meds);
+      setUpcomingDoses(upcoming);
+    });
+
+    return unsubscribe;
+  }, [user]);
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -51,7 +78,7 @@ export default function DashboardNav() {
               >
                 {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
-              
+
               <Link href="/dashboard" className="flex items-center space-x-2">
                 <div className="bg-gradient-to-br from-cyan-500 to-purple-500 p-2 rounded-xl">
                   <Heart className="w-5 h-5 text-white" />
@@ -64,11 +91,105 @@ export default function DashboardNav() {
 
             {/* Right Side */}
             <div className="flex items-center space-x-3">
-              <button className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 relative">
-                <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-danger-500 rounded-full"></span>
-              </button>
-              
+              <div className="relative">
+                <button
+                  onClick={() => setNotificationOpen(!notificationOpen)}
+                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 relative"
+                >
+                  <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                  {upcomingDoses.length > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-danger-500 rounded-full"></span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown */}
+                <AnimatePresence>
+                  {notificationOpen && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setNotificationOpen(false)}
+                        className="fixed inset-0 z-40"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-large border border-slate-200 dark:border-slate-700 z-50 max-h-96 overflow-y-auto"
+                      >
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+                          <h3 className="font-semibold text-slate-900 dark:text-white">
+                            Upcoming Doses Today
+                          </h3>
+                        </div>
+
+                        {upcomingDoses.length > 0 ? (
+                          <div className="p-2">
+                            {upcomingDoses.map((dose, index) => {
+                              // Convert 24h to 12h format with AM/PM
+                              const [hours, minutes] = dose.time.split(':');
+                              const hour = parseInt(hours);
+                              const ampm = hour >= 12 ? 'PM' : 'AM';
+                              const displayHour = hour % 12 || 12;
+                              const displayTime = `${displayHour}:${minutes} ${ampm}`;
+
+                              return (
+                                <div
+                                  key={index}
+                                  className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors"
+                                >
+                                  <div className="flex items-start space-x-3">
+                                    <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+                                      <Pill className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="font-medium text-slate-900 dark:text-white text-sm">
+                                        {dose.medicationName}
+                                      </p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        {dose.dosage}
+                                      </p>
+                                      {dose.instructions && (
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-1">
+                                          {dose.instructions}
+                                        </p>
+                                      )}
+                                      <div className="flex items-center space-x-1 mt-2 text-xs text-slate-600 dark:text-slate-300">
+                                        <Clock className="w-3 h-3" />
+                                        <span>{displayTime}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-8 text-center">
+                            <Bell className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              No upcoming doses for today
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="p-3 border-t border-slate-200 dark:border-slate-700">
+                          <Link
+                            href="/medications"
+                            onClick={() => setNotificationOpen(false)}
+                            className="block text-center text-sm text-cyan-600 dark:text-cyan-400 hover:underline"
+                          >
+                            View All Medications
+                          </Link>
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -133,11 +254,10 @@ export default function DashboardNav() {
                         key={item.name}
                         href={item.href}
                         onClick={() => setSidebarOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                          isActive
+                        className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${isActive
                             ? 'bg-cyan-500 text-white shadow-md'
                             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                        }`}
+                          }`}
                       >
                         <item.icon className="w-5 h-5" />
                         <span className="font-medium">{item.name}</span>
@@ -169,11 +289,10 @@ export default function DashboardNav() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                    isActive
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${isActive
                       ? 'bg-cyan-500 text-white shadow-md'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                  }`}
+                    }`}
                 >
                   <item.icon className="w-5 h-5" />
                   <span className="font-medium">{item.name}</span>
