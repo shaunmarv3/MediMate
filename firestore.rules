@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      
+      // Metrics subcollection
+      match /metrics/{metricId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // Medications subcollection
+      match /medications/{medId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+        
+        // Doses subcollection
+        match /doses/{doseId} {
+          allow read, write: if isAuthenticated() && isOwner(userId);
+        }
+      }
+      
+      // Symptoms subcollection
+      match /symptoms/{symptomId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+  }
+}
