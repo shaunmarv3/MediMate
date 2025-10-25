@@ -36,7 +36,7 @@ export default function RootLayout({ children }) {
               position="top-right" 
               richColors 
               closeButton
-              theme="system"
+              theme="dark"
             />
           </AuthProvider>
         </ThemeProvider>

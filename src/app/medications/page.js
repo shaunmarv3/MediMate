@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
-import { Pill, Plus, Clock, Calendar, X, Trash2, Bell, BellOff } from 'lucide-react';
+import { Pill, Plus, Clock, Calendar, X, Trash2, Bell, BellOff, CheckCircle2, Circle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { requestNotificationPermission, scheduleLocalNotification, getUpcomingDosesForToday } from '@/lib/notifications';
+import { calculateAndStoreAdherence } from '@/lib/adherenceCalculator';
 
 export default function MedicationsPage() {
   const { user } = useAuth();
   const [medications, setMedications] = useState([]);
+  const [takenToday, setTakenToday] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState('default');
@@ -31,6 +33,28 @@ export default function MedicationsPage() {
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission);
     }
+
+    // Fetch today's medication intake logs
+    const fetchTodayIntake = async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+
+      const intakeQuery = query(
+        collection(db, 'users', user.uid, 'medicationIntake'),
+        where('date', '==', todayStr)
+      );
+
+      const snapshot = await getDocs(intakeQuery);
+      const intakeMap = {};
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        intakeMap[data.medicationId] = true;
+      });
+      setTakenToday(intakeMap);
+    };
+
+    fetchTodayIntake();
 
     const q = query(
       collection(db, 'users', user.uid, 'medications'),
@@ -166,6 +190,39 @@ export default function MedicationsPage() {
       ...formData,
       times: [...formData.times, '12:00']
     });
+  };
+
+  const markAsTaken = async (medId, medName) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+
+      // Check if already taken today
+      if (takenToday[medId]) {
+        toast.info('Already marked as taken for today');
+        return;
+      }
+
+      // Log the medication intake
+      await addDoc(collection(db, 'users', user.uid, 'medicationIntake'), {
+        medicationId: medId,
+        medicationName: medName,
+        date: todayStr,
+        timestamp: new Date().toISOString(),
+        taken: true
+      });
+
+      // Update local state
+      setTakenToday(prev => ({ ...prev, [medId]: true }));
+      toast.success(`${medName} marked as taken!`);
+
+      // Calculate and store updated adherence rate
+      await calculateAndStoreAdherence(user.uid);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to mark medication as taken');
+    }
   };
 
   return (
@@ -412,6 +469,29 @@ export default function MedicationsPage() {
                   </p>
                 )}
               </div>
+
+              {/* Mark as Taken Button */}
+              <button
+                onClick={() => markAsTaken(med.id, med.name)}
+                disabled={takenToday[med.id]}
+                className={`w-full mt-4 py-2.5 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center space-x-2 ${
+                  takenToday[med.id]
+                    ? 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-300 cursor-not-allowed'
+                    : 'bg-primary-600 hover:bg-primary-700 text-white hover:shadow-md'
+                }`}
+              >
+                {takenToday[med.id] ? (
+                  <>
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span>Taken Today</span>
+                  </>
+                ) : (
+                  <>
+                    <Circle className="w-5 h-5" />
+                    <span>Mark as Taken</span>
+                  </>
+                )}
+              </button>
             </motion.div>
           ))}
 

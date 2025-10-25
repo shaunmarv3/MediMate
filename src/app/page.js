@@ -11,16 +11,12 @@ import {
   TrendingUp,
   CheckCircle2,
   Sparkles,
-  Moon,
-  Sun,
   Star,
   Users,
   ArrowRight
 } from 'lucide-react';
-import { useTheme } from '@/components/ThemeProvider';
 
 export default function Home() {
-  const { theme, toggleTheme } = useTheme();
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
@@ -132,19 +128,6 @@ export default function Home() {
             </motion.div>
             
             <div className="flex items-center space-x-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? (
-                  <Sun className="w-5 h-5 text-yellow-500" />
-                ) : (
-                  <Moon className="w-5 h-5 text-slate-600" />
-                )}
-              </motion.button>
               <Link 
                 href="/login"
                 className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"

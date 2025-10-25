@@ -33,6 +33,7 @@ import {
 } from 'chart.js';
 import Link from 'next/link';
 import { format, isToday, parseISO } from 'date-fns';
+import { getLatestAdherence } from '@/lib/adherenceCalculator';
 
 ChartJS.register(
   CategoryScale,
@@ -78,57 +79,34 @@ export default function DashboardPage() {
       const meds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setMedications(meds);
 
-      // Get today's doses
+      // Get the latest adherence rate from database
+      const adherence = await getLatestAdherence(user.uid);
+      setAdherenceRate(adherence);
+
+      // Get today's medication status
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const todayStr = today.toISOString().split('T')[0];
+      
+      const todayIntakeQuery = query(
+        collection(db, 'users', user.uid, 'medicationIntake'),
+        where('date', '==', todayStr)
+      );
 
-      let allDoses = [];
-      let takenCount = 0;
-      let totalCount = 0;
+      const todayIntakeSnapshot = await getDocs(todayIntakeQuery);
+      const takenMedIds = new Set(todayIntakeSnapshot.docs.map(doc => doc.data().medicationId));
 
-      for (const med of meds) {
-        const dosesQuery = query(
-          collection(db, 'users', user.uid, 'medications', med.id, 'doses'),
-          where('scheduledTime', '>=', today.toISOString()),
-          where('scheduledTime', '<', tomorrow.toISOString()),
-          orderBy('scheduledTime', 'asc')
-        );
+      // Create today's doses list
+      const doses = meds.map(med => ({
+        id: med.id,
+        medId: med.id,
+        medName: med.name,
+        dosage: med.dosage,
+        taken: takenMedIds.has(med.id),
+        scheduledTime: today.toISOString()
+      }));
 
-        const dosesSnapshot = await getDocs(dosesQuery);
-        const doses = dosesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          medId: med.id,
-          medName: med.name,
-          dosage: med.dosage,
-          ...doc.data()
-        }));
-
-        allDoses.push(...doses);
-        
-        // Calculate adherence for last 7 days
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        
-        const weekDosesQuery = query(
-          collection(db, 'users', user.uid, 'medications', med.id, 'doses'),
-          where('scheduledTime', '>=', weekAgo.toISOString()),
-          orderBy('scheduledTime', 'desc')
-        );
-        
-        const weekDosesSnapshot = await getDocs(weekDosesQuery);
-        weekDosesSnapshot.forEach(doc => {
-          const data = doc.data();
-          totalCount++;
-          if (data.taken) takenCount++;
-        });
-      }
-
-      setTodaysDoses(allDoses);
-      if (totalCount > 0) {
-        setAdherenceRate(Math.round((takenCount / totalCount) * 100));
-      }
+      setTodaysDoses(doses);
       setLoading(false);
     });
 
@@ -259,7 +237,7 @@ export default function DashboardPage() {
                     )}
                     <div>
                       <p className="font-medium text-white">{dose.medName}</p>
-                      <p className="text-sm text-white/70">{dose.dosage} at {format(parseISO(dose.scheduledTime), 'h:mm a')}</p>
+                      <p className="text-sm text-white/70">{dose.dosage}</p>
                     </div>
                   </div>
                   {dose.taken && (
@@ -289,7 +267,7 @@ export default function DashboardPage() {
             </div>
             <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Adherence Rate</p>
             <p className="text-3xl font-bold text-slate-900 dark:text-white">{adherenceRate}%</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Last 7 days</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Since account creation</p>
           </motion.div>
 
           <motion.div

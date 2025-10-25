@@ -30,6 +30,16 @@ service cloud.firestore {
         }
       }
       
+      // Medication Intake subcollection
+      match /medicationIntake/{intakeId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // Adherence Stats subcollection
+      match /adherenceStats/{statId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
       // Symptoms subcollection
       match /symptoms/{symptomId} {
         allow read, write: if isAuthenticated() && isOwner(userId);

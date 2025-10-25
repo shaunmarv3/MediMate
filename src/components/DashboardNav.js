@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
-import { useTheme } from './ThemeProvider';
 import {
   Heart,
   LayoutDashboard,
@@ -16,8 +15,6 @@ import {
   LogOut,
   Menu,
   X,
-  Moon,
-  Sun,
   Bell,
   Clock,
 } from 'lucide-react';
@@ -32,7 +29,6 @@ export default function DashboardNav() {
   const [medications, setMedications] = useState([]);
   const [upcomingDoses, setUpcomingDoses] = useState([]);
   const { user, userData, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -189,17 +185,6 @@ export default function DashboardNav() {
                   )}
                 </AnimatePresence>
               </div>
-
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
-              >
-                {theme === 'dark' ? (
-                  <Sun className="w-5 h-5 text-yellow-500" />
-                ) : (
-                  <Moon className="w-5 h-5 text-slate-600" />
-                )}
-              </button>
 
               <div className="flex items-center space-x-3 pl-3 border-l border-slate-300 dark:border-slate-600">
                 <div className="hidden sm:block text-right">

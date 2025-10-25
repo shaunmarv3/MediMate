@@ -4,9 +4,8 @@ import { useState } from 'react';
 import { addDoc, collection } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthProvider';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast } from 'sonner';
-import { Weight, Heart, Footprints, Droplet, Activity, Upload, Plus } from 'lucide-react';
+import { Weight, Heart, Footprints, Droplet, Activity, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function MetricsPage() {
@@ -22,7 +21,6 @@ export default function MetricsPage() {
     heartRate: '',
     note: '',
   });
-  const [image, setImage] = useState(null);
 
   const metricTypes = [
     { id: 'weight', label: 'Weight', icon: Weight, unit: 'kg', color: 'primary' },
@@ -37,19 +35,10 @@ export default function MetricsPage() {
     setLoading(true);
 
     try {
-      let imageUrl = null;
-      
-      if (image) {
-        const storageRef = ref(storage, `users/${user.uid}/metrics/${Date.now()}_${image.name}`);
-        await uploadBytes(storageRef, image);
-        imageUrl = await getDownloadURL(storageRef);
-      }
-
       const metricData = {
         type: metricType,
         timestamp: new Date().toISOString(),
         note: formData.note,
-        imageUrl,
       };
 
       if (metricType === 'weight') {
@@ -81,7 +70,6 @@ export default function MetricsPage() {
         heartRate: '',
         note: '',
       });
-      setImage(null);
     } catch (error) {
       console.error(error);
       toast.error('Failed to log metric');
@@ -240,25 +228,6 @@ export default function MetricsPage() {
                 placeholder="Add any notes about this reading..."
                 rows={3}
               />
-            </div>
-
-            <div>
-              <label className="label">Upload Image (Optional)</label>
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setImage(e.target.files[0])}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label htmlFor="image-upload" className="cursor-pointer">
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {image ? image.name : 'Click to upload image'}
-                  </p>
-                </label>
-              </div>
             </div>
 
             <button
