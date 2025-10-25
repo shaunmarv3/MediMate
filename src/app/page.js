@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { 
-  Heart, 
-  Pill, 
-  Activity, 
-  Clock, 
-  Shield, 
+import {
+  Heart,
+  Pill,
+  Activity,
+  Clock,
+  Shield,
   TrendingUp,
   CheckCircle2,
   Sparkles,
@@ -92,15 +92,15 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 overflow-hidden">
       {/* Animated Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
+        <motion.div
           style={{ y }}
           className="absolute top-20 left-10 w-72 h-72 bg-cyan-300/20 dark:bg-cyan-500/10 rounded-full blur-3xl"
         />
-        <motion.div 
+        <motion.div
           style={{ y: useTransform(scrollYProgress, [0, 1], ['0%', '80%']) }}
           className="absolute top-40 right-20 w-96 h-96 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl"
         />
-        <motion.div 
+        <motion.div
           style={{ y: useTransform(scrollYProgress, [0, 1], ['0%', '30%']) }}
           className="absolute bottom-20 left-1/2 w-80 h-80 bg-pink-300/20 dark:bg-pink-500/10 rounded-full blur-3xl"
         />
@@ -108,39 +108,40 @@ export default function Home() {
 
       {/* Navigation */}
       <nav className="glass border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <motion.div 
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16 gap-2">
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center space-x-2"
+              className="flex items-center space-x-2 shrink-0"
             >
-              <motion.div 
+              <motion.div
                 whileHover={{ rotate: 360, scale: 1.1 }}
                 transition={{ duration: 0.6 }}
-                className="bg-gradient-to-br from-cyan-500 to-purple-500 p-2 rounded-xl shadow-lg"
+                className="bg-gradient-to-br from-cyan-500 to-purple-500 p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-lg"
               >
-                <Heart className="w-6 h-6 text-white" />
+                <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </motion.div>
-              <span className="text-2xl font-display font-bold bg-gradient-to-r from-cyan-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="text-lg sm:text-xl lg:text-2xl font-display font-bold bg-gradient-to-r from-cyan-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
                 MediMate
               </span>
             </motion.div>
-            
-            <div className="flex items-center space-x-4">
-              <Link 
+
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 shrink-0">
+              <Link
                 href="/login"
-                className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors"
+                className="text-slate-600 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium transition-colors text-sm sm:text-base whitespace-nowrap"
               >
                 Sign In
               </Link>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link 
+                <Link
                   href="/signup"
-                  className="btn-primary inline-flex items-center space-x-2"
+                  className="btn-primary inline-flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base px-3 py-2 sm:px-4 sm:py-2.5 whitespace-nowrap"
                 >
-                  <span>Get Started</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span className="hidden xs:inline">Get Started</span>
+                  <span className="inline xs:hidden">Start</span>
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </Link>
               </motion.div>
             </div>
@@ -158,7 +159,7 @@ export default function Home() {
               transition={{ duration: 0.6 }}
               style={{ opacity }}
             >
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
@@ -167,18 +168,18 @@ export default function Home() {
                 <Sparkles className="w-4 h-4 animate-pulse" />
                 <span className="text-sm font-medium">Your Personal Health Companion</span>
               </motion.div>
-              
+
               <h1 className="text-5xl lg:text-7xl font-display font-bold text-slate-900 dark:text-white mb-6 leading-tight">
                 Take Control of Your{' '}
                 <span className="bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">
                   Health Journey
                 </span>
               </h1>
-              
+
               <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 leading-relaxed">
                 Track medications, monitor health metrics, and get AI-powered symptom guidance — all in one beautiful, secure platform.
               </p>
-              
+
               <div className="flex flex-col sm:flex-row gap-4">
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Link href="/signup" className="btn-primary text-center inline-flex items-center justify-center space-x-2 group">
@@ -194,7 +195,7 @@ export default function Home() {
               </div>
 
               <div className="mt-8 flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
@@ -203,7 +204,7 @@ export default function Home() {
                   <CheckCircle2 className="w-5 h-5 text-success-500" />
                   <span>No credit card required</span>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 }}
@@ -212,7 +213,7 @@ export default function Home() {
                   <CheckCircle2 className="w-5 h-5 text-success-500" />
                   <span>100% Private & Secure</span>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 }}
@@ -231,7 +232,7 @@ export default function Home() {
               className="relative"
             >
               <div className="relative z-10">
-                <motion.div 
+                <motion.div
                   whileHover={{ y: -5 }}
                   transition={{ duration: 0.3 }}
                   className="card p-8 shadow-2xl"
@@ -259,7 +260,7 @@ export default function Home() {
                   </div>
                 </motion.div>
               </div>
-              
+
               {/* Enhanced Decorative elements */}
               <div className="absolute -top-6 -right-6 w-72 h-72 bg-gradient-to-br from-cyan-200 to-cyan-300 dark:from-cyan-900/30 dark:to-cyan-800/30 rounded-full blur-3xl opacity-60 animate-pulse"></div>
               <div className="absolute -bottom-6 -left-6 w-72 h-72 bg-gradient-to-br from-purple-200 to-purple-300 dark:from-purple-900/30 dark:to-purple-800/30 rounded-full blur-3xl opacity-60 animate-pulse" style={{ animationDelay: '1s' }}></div>
@@ -379,12 +380,12 @@ export default function Home() {
           >
             {/* Animated background pattern */}
             <div className="absolute inset-0 opacity-10">
-              <div className="absolute inset-0" style={{ 
+              <div className="absolute inset-0" style={{
                 backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
                 backgroundSize: '30px 30px'
               }} />
             </div>
-            
+
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -396,18 +397,18 @@ export default function Home() {
                 <Sparkles className="w-4 h-4" />
                 <span className="text-sm font-medium">Limited Time Offer</span>
               </div>
-              
+
               <h2 className="text-4xl lg:text-5xl font-display font-bold text-white mb-4">
                 Ready to Start Your Health Journey?
               </h2>
               <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
                 Join thousands of users taking control of their wellness with MediMate
               </p>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Link 
-                    href="/signup" 
+                  <Link
+                    href="/signup"
                     className="inline-flex items-center space-x-2 bg-white text-cyan-600 hover:bg-cyan-50 font-semibold px-8 py-4 rounded-xl transition-all duration-200 shadow-xl hover:shadow-2xl"
                   >
                     <span>Create Free Account</span>
@@ -415,15 +416,15 @@ export default function Home() {
                   </Link>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Link 
-                    href="/login" 
+                  <Link
+                    href="/login"
                     className="inline-flex items-center space-x-2 border-2 border-white text-white hover:bg-white/10 backdrop-blur-sm font-semibold px-8 py-4 rounded-xl transition-all duration-200"
                   >
                     <span>Sign In</span>
                   </Link>
                 </motion.div>
               </div>
-              
+
               <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-white/90 text-sm">
                 <div className="flex items-center space-x-2">
                   <CheckCircle2 className="w-5 h-5" />
@@ -442,11 +443,11 @@ export default function Home() {
 
             {/* Floating elements */}
             <motion.div
-              animate={{ 
+              animate={{
                 y: [0, -10, 0],
                 rotate: [0, 5, 0]
               }}
-              transition={{ 
+              transition={{
                 duration: 3,
                 repeat: Infinity,
                 ease: "easeInOut"
@@ -454,11 +455,11 @@ export default function Home() {
               className="absolute top-10 right-10 w-20 h-20 bg-white/10 backdrop-blur-sm rounded-full"
             />
             <motion.div
-              animate={{ 
+              animate={{
                 y: [0, 10, 0],
                 rotate: [0, -5, 0]
               }}
-              transition={{ 
+              transition={{
                 duration: 4,
                 repeat: Infinity,
                 ease: "easeInOut"
@@ -484,7 +485,7 @@ export default function Home() {
                 Your trusted companion for better health management.
               </p>
             </div>
-            
+
             <div>
               <h3 className="font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-slate-400 text-sm">
@@ -493,7 +494,7 @@ export default function Home() {
                 <li><Link href="/help" className="hover:text-white transition-colors">Help Center</Link></li>
               </ul>
             </div>
-            
+
             <div>
               <h3 className="font-semibold mb-4">Company</h3>
               <ul className="space-y-2 text-slate-400 text-sm">
@@ -502,7 +503,7 @@ export default function Home() {
                 <li><Link href="#" className="hover:text-white transition-colors">Terms</Link></li>
               </ul>
             </div>
-            
+
             <div>
               <h3 className="font-semibold mb-4">Connect</h3>
               <ul className="space-y-2 text-slate-400 text-sm">
@@ -512,7 +513,7 @@ export default function Home() {
               </ul>
             </div>
           </div>
-          
+
           <div className="border-t border-slate-800 pt-8">
             <p className="text-center text-slate-400 text-sm">
               © 2025 MediMate. All rights reserved.

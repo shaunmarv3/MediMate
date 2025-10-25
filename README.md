@@ -7,6 +7,8 @@
   <img src="https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white" alt="Gemini AI"/>
 </div>
 
+## DEMO: [https://medi-mate-two.vercel.app/](https://medi-mate-two.vercel.app/)
+
 ## 🏥 Overview
 
 MediMate is a comprehensive, AI-powered personal health tracking and medication management web application. Track your health metrics, manage medications with smart reminders, get **personalized** AI-powered symptom guidance that considers your medication and health data, and visualize your wellness journey—all in one secure, user-friendly platform.
