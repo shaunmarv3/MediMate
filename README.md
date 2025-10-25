@@ -98,18 +98,6 @@ MediMate is a comprehensive, beautifully designed personal health tracking and m
    
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-## 🎮 Demo Mode
-
-Try MediMate instantly with pre-populated sample data:
-
-1. Go to [http://localhost:3000/login?demo=true](http://localhost:3000/login?demo=true)
-2. Click "Launch Demo"
-3. Explore the full functionality with sample medications and health metrics!
-
-Demo credentials (if needed manually):
-- **Email:** demo@medimate.test
-- **Password:** demo123456
-
 ## 📁 Project Structure
 
 ```
@@ -134,8 +122,7 @@ medimate/
 │   │   ├── ProtectedRoute.js   # Route protection
 │   │   └── DashboardNav.js     # Dashboard navigation
 │   └── lib/
-│       ├── firebase.js         # Firebase configuration
-│       └── demoData.js         # Demo user generator
+│       └── firebase.js         # Firebase configuration
 ├── functions/                  # Cloud Functions (optional)
 ├── public/                     # Static assets
 ├── firestore.rules            # Firestore security rules
@@ -274,11 +261,6 @@ firebase functions:config:set email.user="your-email@gmail.com" email.password="
 ### Run Tests
 ```bash
 npm test
-```
-
-### Test Demo User Creation
-```bash
-npm run seed-demo
 ```
 
 ## 🛠️ Development

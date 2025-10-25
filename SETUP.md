@@ -53,10 +53,6 @@ npm run dev
 
 Open http://localhost:3000
 
-### 6. Try Demo Mode
-
-Visit http://localhost:3000/login?demo=true and click "Launch Demo" to see the app with sample data!
-
 ## Deploy to Vercel
 
 1. Push code to GitHub
@@ -74,7 +70,6 @@ Visit http://localhost:3000/login?demo=true and click "Launch Demo" to see the a
 ✅ Dark mode with beautiful UI
 ✅ Data export (CSV)
 ✅ Responsive design
-✅ Demo mode with sample data
 ✅ Profile & settings management
 ✅ Firestore security rules
 ✅ Cloud Functions for email reminders

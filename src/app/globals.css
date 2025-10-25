@@ -103,6 +103,11 @@ html {
   border-radius: 1rem;
   border: 1px solid rgb(226 232 240);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .dark .card {
@@ -110,24 +115,51 @@ html {
   border-color: rgb(51 65 85);
 }
 
+.dark .card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
 .btn-primary {
-  background-color: rgb(6 182 212);
+  background: linear-gradient(135deg, rgb(6 182 212), rgb(8 145 178));
   color: white;
   font-weight: 500;
   padding: 0.625rem 1.5rem;
   border-radius: 0.75rem;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px 0 rgba(6, 182, 212, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
 }
 
 .btn-primary:hover {
-  background-color: rgb(8 145 178);
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  background: linear-gradient(135deg, rgb(8 145 178), rgb(6 182 212));
+  box-shadow: 0 8px 20px 0 rgba(6, 182, 212, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .btn-secondary {
@@ -157,24 +189,47 @@ html {
   font-weight: 500;
   padding: 0.625rem 1.5rem;
   border-radius: 0.75rem;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-outline::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(135deg, rgb(6 182 212), rgb(8 145 178));
+  transition: width 0.3s;
+  z-index: -1;
+}
+
+.btn-outline:hover::before {
+  width: 100%;
 }
 
 .btn-outline:hover {
-  background-color: rgb(236 254 255);
+  color: white;
+  border-color: rgb(8 145 178);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px 0 rgba(6, 182, 212, 0.25);
 }
 
 .dark .btn-outline {
   color: rgb(34 211 238);
+  border-color: rgb(34 211 238);
 }
 
 .dark .btn-outline:hover {
-  background-color: rgb(8 51 68);
+  color: white;
 }
 
 .btn-outline:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .input-field {
@@ -271,3 +326,94 @@ html {
 .dark ::-webkit-scrollbar-thumb:hover {
   background-color: rgb(100 116 139);
 }
+
+/* Custom Animations */
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 6s ease infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Glow effects */
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, input, select, textarea {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced focus states */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgb(6 182 212);
+  outline-offset: 2px;
+}
+
+/* Improved text selection */
+::selection {
+  background-color: rgb(6 182 212);
+  color: white;
+}
+
+.dark ::selection {
+  background-color: rgb(34 211 238);
+  color: rgb(15 23 42);
+}
+

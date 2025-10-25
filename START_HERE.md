@@ -25,18 +25,6 @@ npm run dev
 
 Visit: **http://localhost:3000**
 
-## 🎮 Try the Demo NOW!
-
-Go to: **http://localhost:3000/login?demo=true**
-
-Click **"Launch Demo"** and explore:
-- ✅ Pre-loaded medications
-- ✅ 30 days of health data
-- ✅ Interactive charts
-- ✅ AI symptom checker
-- ✅ Beautiful dark mode
-- ✅ All features working!
-
 ## 📱 What You Can Do
 
 ### As a User:
@@ -82,7 +70,6 @@ Gemini AI (Symptom checking)
 - **Real-time Sync** with Firestore
 - **Dark Mode** throughout
 - **100% Functional** prototype
-- **Demo Ready** in 1 click
 
 ## 🔐 Security Features
 
@@ -94,7 +81,6 @@ Gemini AI (Symptom checking)
 
 ## 🎯 Perfect For
 
-- 💼 **Ideathon Demos** - Instant demo mode
 - 🏥 **Healthcare Hackathons** - Full medical app
 - 📱 **Portfolio Projects** - Professional quality
 - 🎓 **Learning Projects** - Modern stack
@@ -114,7 +100,7 @@ Gemini AI (Symptom checking)
 # Push to GitHub
 git init
 git add .
-git commit -m "MediMate ready for demo"
+git commit -m "MediMate ready for production"
 git push origin main
 
 # Then import to Vercel
@@ -139,20 +125,18 @@ Everything works out of the box:
 - ✅ Beautiful UI
 - ✅ Dark mode
 - ✅ Charts & analytics
-- ✅ Demo mode
 - ✅ Mobile responsive
 
 ## 🆘 Need Help?
 
 1. **Check** `SETUP.md` for configuration
 2. **Read** `FEATURES.md` for feature details
-3. **Try** demo mode at `/login?demo=true`
-4. **Visit** `/help` page in the app
+3. **Visit** `/help` page in the app
 
-## 🎬 Demo Script
+## 🎬 Presentation Guide
 
 1. Start at landing page - show beautiful hero
-2. Click "Try Demo" → Instant account with data
+2. Sign up or sign in to create an account
 3. Show dashboard with real-time charts
 4. Add a new medication
 5. Log a health metric
@@ -175,18 +159,16 @@ Everything works out of the box:
 
 ## 💡 Pro Tips
 
-1. **Demo mode** creates realistic data automatically
+1. **Real-time updates** - changes appear instantly
 2. **Dark mode** toggle in top navigation
-3. **Real-time updates** - changes appear instantly
-4. **Mobile first** - looks amazing on phones
-5. **Export data** from settings anytime
+3. **Mobile first** - looks amazing on phones
+4. **Export data** from settings anytime
 
 ---
 
 ## 🎉 Congratulations!
 
 You now have a **professional, full-stack health application** ready for:
-- ✨ Demos
 - 🏆 Hackathons
 - 💼 Portfolios
 - 🚀 Production

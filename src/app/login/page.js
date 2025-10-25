@@ -2,12 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Heart, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
-import { createDemoUser } from '@/lib/demoData';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,8 +15,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const isDemo = searchParams.get('demo') === 'true';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,21 +36,6 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (error) {
       console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setLoading(true);
-    try {
-      const demoCredentials = await createDemoUser();
-      await signIn(demoCredentials.email, demoCredentials.password);
-      toast.success('Welcome to the demo!');
-      router.push('/dashboard');
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to create demo account');
     } finally {
       setLoading(false);
     }
@@ -110,28 +92,6 @@ export default function LoginPage() {
                 Continue your wellness journey
               </p>
             </div>
-
-            {isDemo && (
-              <div className="mb-6 p-4 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-xl">
-                <p className="text-sm text-cyan-700 dark:text-cyan-300 text-center mb-3">
-                  Try MediMate with a pre-populated demo account
-                </p>
-                <button
-                  onClick={handleDemoLogin}
-                  disabled={loading}
-                  className="w-full btn-primary"
-                >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-                  ) : (
-                    'Launch Demo'
-                  )}
-                </button>
-                <div className="mt-3 text-center">
-                  <span className="text-sm text-slate-500 dark:text-slate-400">or sign in below</span>
-                </div>
-              </div>
-            )}
 
             <button
               onClick={handleGoogleSignIn}
