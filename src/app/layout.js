@@ -2,6 +2,7 @@ import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'sonner';
 import ThemeProvider from '@/components/ThemeProvider';
+import { AuthProvider } from '@/components/AuthProvider';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -29,13 +30,15 @@ export default function RootLayout({ children }) {
         className={`${inter.variable} ${poppins.variable} font-sans antialiased`}
       >
         <ThemeProvider>
-          {children}
-          <Toaster 
-            position="top-right" 
-            richColors 
-            closeButton
-            theme="system"
-          />
+          <AuthProvider>
+            {children}
+            <Toaster 
+              position="top-right" 
+              richColors 
+              closeButton
+              theme="system"
+            />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Heart, User, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
+import { toast } from 'sonner';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
