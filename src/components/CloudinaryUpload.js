@@ -44,9 +44,8 @@ export default function CloudinaryUpload({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('upload_preset', 'unsigned_upload');
+      formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'unsigned_upload');
       formData.append('folder', folder);
-      formData.append('cloud_name', 'dx0znhi8d');
 
       const xhr = new XMLHttpRequest();
 
@@ -87,7 +86,8 @@ export default function CloudinaryUpload({
       });
 
       // Send request
-      xhr.open('POST', `https://api.cloudinary.com/v1_1/dx0znhi8d/image/upload`);
+      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+      xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
       xhr.send(formData);
 
     } catch (error) {

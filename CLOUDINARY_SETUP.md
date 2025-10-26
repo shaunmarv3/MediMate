@@ -32,7 +32,7 @@ To enable the pill bottle scanner feature with Cloudinary image hosting, you nee
 
 Your `.env.local` file should have these values:
 ```env
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=dx0znhi8d
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=unsigned_upload
 ```
 

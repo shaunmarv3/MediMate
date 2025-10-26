@@ -69,9 +69,9 @@ Medication card displays uploaded bottle image!
 
 ### 3. **.env.local** (Already Configured)
 ```env
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=dx0znhi8d
-NEXT_PUBLIC_CLOUDINARY_API_KEY=552164599652114
-NEXT_PUBLIC_CLOUDINARY_API_SECRET=bmK0nLffMha4fwbCQo6EoKVQke8
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
+NEXT_PUBLIC_CLOUDINARY_API_KEY=your_api_key
+NEXT_PUBLIC_CLOUDINARY_API_SECRET=your_api_secret
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=unsigned_upload
 ```
 
@@ -168,7 +168,7 @@ npm run dev
 ## 🔧 Technical Details
 
 ### Cloudinary Integration
-- **Upload endpoint**: `https://api.cloudinary.com/v1_1/dx0znhi8d/image/upload`
+- **Upload endpoint**: `https://api.cloudinary.com/v1_1/{your_cloud_name}/image/upload`
 - **Upload method**: Unsigned (no signature required)
 - **Folder**: `medication-bottles`
 - **Progress tracking**: XMLHttpRequest with `upload.onprogress`

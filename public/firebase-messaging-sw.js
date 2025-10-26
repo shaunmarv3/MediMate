@@ -3,46 +3,45 @@
 importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
 
-// Initialize Firebase in the service worker
-firebase.initializeApp({
-  apiKey: "AIzaSyBTkrd2ncL-4WfzXEqH8iIY23mazPgQD8A",
-  authDomain: "medimate-c0138.firebaseapp.com",
-  projectId: "medimate-c0138",
-  storageBucket: "medimate-c0138.firebasestorage.app",
-  messagingSenderId: "987441419343",
-  appId: "1:987441419343:web:f7c3ee9179ed96c697c63a"
-});
+// Store messaging instance
+let messaging = null;
 
-const messaging = firebase.messaging();
+// Fetch Firebase config from the parent page
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'FIREBASE_CONFIG') {
+    firebase.initializeApp(event.data.config);
+    messaging = firebase.messaging();
+    
+    // Setup background message handler after initialization
+    messaging.onBackgroundMessage((payload) => {
+      console.log('Received background message:', payload);
 
-// Handle background messages
-messaging.onBackgroundMessage((payload) => {
-  console.log('Received background message:', payload);
+      const notificationTitle = payload.notification?.title || payload.data?.title || 'MediMate Reminder';
+      const notificationBody = payload.notification?.body || payload.data?.body || 'Time to take your medication';
 
-  const notificationTitle = payload.notification?.title || payload.data?.title || 'MediMate Reminder';
-  const notificationBody = payload.notification?.body || payload.data?.body || 'Time to take your medication';
+      const notificationOptions = {
+        body: notificationBody,
+        icon: '/icon-192.png',
+        badge: '/badge-72.png',
+        tag: 'medication-reminder',
+        requireInteraction: true,
+        vibrate: [200, 100, 200],
+        data: payload.data,
+        actions: [
+          {
+            action: 'mark-taken',
+            title: 'Mark as Taken'
+          },
+          {
+            action: 'view',
+            title: 'View Details'
+          }
+        ]
+      };
 
-  const notificationOptions = {
-    body: notificationBody,
-    icon: '/icon-192.png',
-    badge: '/badge-72.png',
-    tag: 'medication-reminder',
-    requireInteraction: true,
-    vibrate: [200, 100, 200],
-    data: payload.data,
-    actions: [
-      {
-        action: 'mark-taken',
-        title: 'Mark as Taken'
-      },
-      {
-        action: 'view',
-        title: 'View Details'
-      }
-    ]
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
+      self.registration.showNotification(notificationTitle, notificationOptions);
+    });
+  }
 });
 
 // Handle notification clicks

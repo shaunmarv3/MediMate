@@ -25,6 +25,20 @@ export const googleProvider = new GoogleAuthProvider();
 // Initialize messaging (only in browser and if supported)
 export const getMessagingInstance = async () => {
   if (typeof window !== 'undefined' && await isSupported()) {
+    // Send Firebase config to service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((registration) => {
+        if (registration.active) {
+          registration.active.postMessage({
+            type: 'FIREBASE_CONFIG',
+            config: firebaseConfig
+          });
+        }
+      }).catch(err => {
+        console.log('Service worker not ready:', err);
+      });
+    }
+    
     return getMessaging(app);
   }
   return null;
