@@ -17,6 +17,8 @@ import {
   X,
   Bell,
   Clock,
+  AlertTriangle,
+  Calendar,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -28,6 +30,7 @@ export default function DashboardNav() {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [medications, setMedications] = useState([]);
   const [upcomingDoses, setUpcomingDoses] = useState([]);
+  const [warnings, setWarnings] = useState({ lowStock: [], expiring: [] });
   const { user, userData, signOut } = useAuth();
   const pathname = usePathname();
 
@@ -46,10 +49,30 @@ export default function DashboardNav() {
       // Calculate upcoming doses
       const upcoming = getUpcomingDosesForToday(meds);
       setUpcomingDoses(upcoming);
+
+      // Calculate warnings
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const sevenDaysFromNow = new Date();
+      sevenDaysFromNow.setDate(today.getDate() + 7);
+
+      const lowStock = meds.filter(med => 
+        med.daysRemaining !== null && med.daysRemaining <= 7 && med.daysRemaining > 0
+      );
+
+      const expiring = meds.filter(med => {
+        if (!med.expirationDate) return false;
+        const expDate = new Date(med.expirationDate + 'T23:59:59');
+        return expDate <= sevenDaysFromNow && expDate >= today;
+      });
+
+      setWarnings({ lowStock, expiring });
     });
 
     return unsubscribe;
   }, [user]);
+
+  const totalNotifications = upcomingDoses.length + warnings.lowStock.length + warnings.expiring.length;
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -93,8 +116,10 @@ export default function DashboardNav() {
                   className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 relative"
                 >
                   <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                  {upcomingDoses.length > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-danger-500 rounded-full"></span>
+                  {totalNotifications > 0 && (
+                    <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-danger-500 text-white text-[10px] font-bold rounded-full">
+                      {totalNotifications > 9 ? '9+' : totalNotifications}
+                    </span>
                   )}
                 </button>
 
@@ -117,56 +142,132 @@ export default function DashboardNav() {
                       >
                         <div className="p-4 border-b border-slate-200 dark:border-slate-700">
                           <h3 className="font-semibold text-slate-900 dark:text-white">
-                            Upcoming Doses Today
+                            Notifications
                           </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            {totalNotifications} notification{totalNotifications !== 1 ? 's' : ''}
+                          </p>
                         </div>
 
-                        {upcomingDoses.length > 0 ? (
-                          <div className="p-2">
-                            {upcomingDoses.map((dose, index) => {
-                              // Convert 24h to 12h format with AM/PM
-                              const [hours, minutes] = dose.time.split(':');
-                              const hour = parseInt(hours);
-                              const ampm = hour >= 12 ? 'PM' : 'AM';
-                              const displayHour = hour % 12 || 12;
-                              const displayTime = `${displayHour}:${minutes} ${ampm}`;
-
-                              return (
+                        {/* Warnings Section */}
+                        {(warnings.lowStock.length > 0 || warnings.expiring.length > 0) && (
+                          <div className="border-b border-slate-200 dark:border-slate-700">
+                            <div className="px-4 py-2 bg-warning-50 dark:bg-warning-900/20">
+                              <p className="text-xs font-semibold text-warning-800 dark:text-warning-300 uppercase tracking-wide">
+                                ⚠️ Alerts
+                              </p>
+                            </div>
+                            <div className="p-2">
+                              {/* Low Stock Warnings */}
+                              {warnings.lowStock.map((med) => (
                                 <div
-                                  key={index}
-                                  className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors"
+                                  key={`low-${med.id}`}
+                                  className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors mb-1"
                                 >
                                   <div className="flex items-start space-x-3">
-                                    <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
-                                      <Pill className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                                    <div className="p-2 bg-warning-100 dark:bg-warning-900/30 rounded-lg">
+                                      <AlertTriangle className="w-4 h-4 text-warning-600 dark:text-warning-400" />
                                     </div>
                                     <div className="flex-1">
                                       <p className="font-medium text-slate-900 dark:text-white text-sm">
-                                        {dose.medicationName}
+                                        Low Stock: {med.name}
                                       </p>
-                                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        {dose.dosage}
+                                      <p className="text-xs text-warning-700 dark:text-warning-400 mt-1">
+                                        Only {med.daysRemaining} day{med.daysRemaining !== 1 ? 's' : ''} remaining
                                       </p>
-                                      {dose.instructions && (
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-1">
-                                          {dose.instructions}
-                                        </p>
-                                      )}
-                                      <div className="flex items-center space-x-1 mt-2 text-xs text-slate-600 dark:text-slate-300">
-                                        <Clock className="w-3 h-3" />
-                                        <span>{displayTime}</span>
-                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              );
-                            })}
+                              ))}
+
+                              {/* Expiration Warnings */}
+                              {warnings.expiring.map((med) => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const expDate = new Date(med.expirationDate + 'T23:59:59');
+                                const daysUntilExpiry = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+                                
+                                return (
+                                  <div
+                                    key={`exp-${med.id}`}
+                                    className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors mb-1"
+                                  >
+                                    <div className="flex items-start space-x-3">
+                                      <div className="p-2 bg-danger-100 dark:bg-danger-900/30 rounded-lg">
+                                        <Calendar className="w-4 h-4 text-danger-600 dark:text-danger-400" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="font-medium text-slate-900 dark:text-white text-sm">
+                                          Expiring: {med.name}
+                                        </p>
+                                        <p className="text-xs text-danger-700 dark:text-danger-400 mt-1">
+                                          Expires in {daysUntilExpiry} day{daysUntilExpiry !== 1 ? 's' : ''}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        ) : (
+                        )}
+
+                        {/* Upcoming Doses Section */}
+                        {upcomingDoses.length > 0 && (
+                          <>
+                            <div className="px-4 py-2 bg-cyan-50 dark:bg-cyan-900/20">
+                              <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300 uppercase tracking-wide">
+                                📅 Upcoming Doses Today
+                              </p>
+                            </div>
+                            <div className="p-2">
+                              {upcomingDoses.map((dose, index) => {
+                                // Convert 24h to 12h format with AM/PM
+                                const [hours, minutes] = dose.time.split(':');
+                                const hour = parseInt(hours);
+                                const ampm = hour >= 12 ? 'PM' : 'AM';
+                                const displayHour = hour % 12 || 12;
+                                const displayTime = `${displayHour}:${minutes} ${ampm}`;
+
+                                return (
+                                  <div
+                                    key={index}
+                                    className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors"
+                                  >
+                                    <div className="flex items-start space-x-3">
+                                      <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+                                        <Pill className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="font-medium text-slate-900 dark:text-white text-sm">
+                                          {dose.medicationName}
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                          {dose.dosage}
+                                        </p>
+                                        {dose.instructions && (
+                                          <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-1">
+                                            {dose.instructions}
+                                          </p>
+                                        )}
+                                        <div className="flex items-center space-x-1 mt-2 text-xs text-slate-600 dark:text-slate-300">
+                                          <Clock className="w-3 h-3" />
+                                          <span>{displayTime}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+
+                        {totalNotifications === 0 && (
                           <div className="p-8 text-center">
                             <Bell className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
                             <p className="text-sm text-slate-500 dark:text-slate-400">
-                              No upcoming doses for today
+                              No notifications
                             </p>
                           </div>
                         )}

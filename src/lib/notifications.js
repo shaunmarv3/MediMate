@@ -23,6 +23,7 @@ export async function requestNotificationPermission() {
         return null;
     } catch (error) {
         console.error('Error requesting notification permission:', error);
+        // Don't throw error - return null to allow app to continue
         return null;
     }
 }
@@ -31,15 +32,41 @@ export async function requestNotificationPermission() {
 async function getFCMToken() {
     try {
         const messaging = await getMessagingInstance();
-        if (!messaging) return null;
+        if (!messaging) {
+            console.log('Firebase Messaging not available');
+            return null;
+        }
 
-        const token = await getToken(messaging, {
-            vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
+        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+        if (!vapidKey || vapidKey === 'your_vapid_key_here') {
+            console.log('VAPID key not configured');
+            return null;
+        }
+
+        // Check if service worker is available
+        if (!('serviceWorker' in navigator)) {
+            console.log('Service Worker not supported');
+            return null;
+        }
+
+        // Add timeout to prevent hanging
+        const tokenPromise = getToken(messaging, {
+            vapidKey: vapidKey
+        }).catch(err => {
+            // Suppress push service errors
+            console.log('Push service not available:', err.message);
+            return null;
         });
 
+        const timeoutPromise = new Promise((resolve) => 
+            setTimeout(() => resolve(null), 5000)
+        );
+
+        const token = await Promise.race([tokenPromise, timeoutPromise]);
         return token;
     } catch (error) {
-        console.error('Error getting FCM token:', error);
+        // Completely suppress all errors
+        console.log('FCM token not available:', error.message);
         return null;
     }
 }
