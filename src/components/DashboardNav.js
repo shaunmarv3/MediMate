@@ -24,6 +24,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getUpcomingDosesForToday } from '@/lib/notifications';
+import { 
+  setupNotificationMonitoring, 
+  requestNotificationPermission 
+} from '@/lib/notificationManager';
+import InteractionHistory from './InteractionHistory';
 
 export default function DashboardNav() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -31,8 +36,31 @@ export default function DashboardNav() {
   const [medications, setMedications] = useState([]);
   const [upcomingDoses, setUpcomingDoses] = useState([]);
   const [warnings, setWarnings] = useState({ lowStock: [], expiring: [] });
+  const [criticalAlerts, setCriticalAlerts] = useState([]);
   const { user, userData, signOut } = useAuth();
   const pathname = usePathname();
+
+  // Setup comprehensive notification monitoring
+  useEffect(() => {
+    if (!user) return;
+
+    // Request notification permission
+    requestNotificationPermission();
+
+    // Handle incoming critical notifications
+    const handleNotification = (notification) => {
+      setCriticalAlerts(prev => {
+        const updated = [notification, ...prev];
+        // Keep only the last 10 critical alerts
+        return updated.slice(0, 10);
+      });
+    };
+
+    // Setup monitoring for all critical events
+    const cleanup = setupNotificationMonitoring(user.uid, handleNotification);
+
+    return cleanup;
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -72,7 +100,7 @@ export default function DashboardNav() {
     return unsubscribe;
   }, [user]);
 
-  const totalNotifications = upcomingDoses.length + warnings.lowStock.length + warnings.expiring.length;
+  const totalNotifications = upcomingDoses.length + warnings.lowStock.length + warnings.expiring.length + criticalAlerts.length;
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -148,6 +176,52 @@ export default function DashboardNav() {
                             {totalNotifications} notification{totalNotifications !== 1 ? 's' : ''}
                           </p>
                         </div>
+
+                        {/* Critical Alerts Section */}
+                        {criticalAlerts.length > 0 && (
+                          <div className="border-b border-slate-200 dark:border-slate-700">
+                            <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20">
+                              <p className="text-xs font-semibold text-red-800 dark:text-red-300 uppercase tracking-wide">
+                                🚨 Critical Alerts
+                              </p>
+                            </div>
+                            <div className="p-2">
+                              {criticalAlerts.map((alert, index) => (
+                                <div
+                                  key={index}
+                                  className={`p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors mb-1 ${
+                                    alert.severity === 'critical' ? 'bg-red-50 dark:bg-red-900/10' :
+                                    alert.severity === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/10' :
+                                    ''
+                                  }`}
+                                >
+                                  <div className="flex items-start space-x-3">
+                                    <div className={`text-lg ${
+                                      alert.severity === 'critical' ? 'text-red-500' :
+                                      alert.severity === 'warning' ? 'text-yellow-500' :
+                                      'text-blue-500'
+                                    }`}>
+                                      {alert.type === 'expiring' && '⚠️'}
+                                      {alert.type === 'low-stock' && '📦'}
+                                      {alert.type === 'out-of-stock' && '🚨'}
+                                      {alert.type === 'missed' && '💊'}
+                                      {alert.type === 'critical-metric' && '🏥'}
+                                      {alert.type === 'low-adherence' && '📊'}
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="font-medium text-slate-900 dark:text-white text-sm">
+                                        {alert.title}
+                                      </p>
+                                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                                        {alert.message}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Warnings Section */}
                         {(warnings.lowStock.length > 0 || warnings.expiring.length > 0) && (

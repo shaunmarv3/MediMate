@@ -21,12 +21,23 @@ export default function MedicationsPage() {
   const [scanSuccess, setScanSuccess] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState('default');
+  const [interactionWarning, setInteractionWarning] = useState(null);
   const fileInputRef = useRef(null);
+  
+  // Helper to get local date in YYYY-MM-DD format (avoid timezone issues)
+  const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
   const [formData, setFormData] = useState({
     name: '',
     dosage: '',
     times: ['08:00'],
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: getLocalDateString(),
     endDate: '',
     instructions: '',
     quantity: '',
@@ -44,9 +55,9 @@ export default function MedicationsPage() {
 
     // Fetch today's medication intake logs
     const fetchTodayIntake = async () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
       const intakeQuery = query(
         collection(db, 'users', user.uid, 'medicationIntake'),
@@ -117,15 +128,20 @@ export default function MedicationsPage() {
     if (!medications.length) return;
 
     const checkMedicationWarnings = () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const sevenDaysFromNow = new Date();
+      // Create local midnight dates (avoid UTC timezone issues)
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const sevenDaysFromNow = new Date(today);
       sevenDaysFromNow.setDate(today.getDate() + 7);
+
+      // Format for logging as local dates
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const sevenDaysStr = `${sevenDaysFromNow.getFullYear()}-${String(sevenDaysFromNow.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysFromNow.getDate()).padStart(2, '0')}`;
 
       console.log('🔍 Checking medication warnings...', {
         medicationsCount: medications.length,
-        today: today.toISOString(),
-        sevenDaysFromNow: sevenDaysFromNow.toISOString()
+        today: todayStr,
+        sevenDaysFromNow: sevenDaysStr
       });
 
       medications.forEach((med) => {
@@ -135,7 +151,6 @@ export default function MedicationsPage() {
           
           // Only show each warning once per day
           const lastWarning = localStorage.getItem(warningKey);
-          const todayStr = today.toISOString().split('T')[0];
           
           console.log(`📊 ${med.name} - Low stock check:`, {
             daysRemaining: med.daysRemaining,
@@ -175,12 +190,16 @@ export default function MedicationsPage() {
 
         // Check for expiration within 7 days
         if (med.expirationDate) {
-          const expirationDate = new Date(med.expirationDate + 'T23:59:59'); // End of day in local time
+          // Parse expiration date as local date (avoid UTC timezone issues)
+          const dateParts = med.expirationDate.split('T')[0].split('-').map(Number);
+          const expirationDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], 23, 59, 59, 999);
+          
+          const expiryStr = `${expirationDate.getFullYear()}-${String(expirationDate.getMonth() + 1).padStart(2, '0')}-${String(expirationDate.getDate()).padStart(2, '0')}`;
           
           console.log(`📅 ${med.name} - Expiration check:`, {
-            expirationDate: expirationDate.toISOString(),
-            today: today.toISOString(),
-            sevenDaysFromNow: sevenDaysFromNow.toISOString(),
+            expirationDate: expiryStr,
+            today: todayStr,
+            sevenDaysFromNow: sevenDaysStr,
             isWithinSevenDays: expirationDate <= sevenDaysFromNow && expirationDate >= today
           });
           
@@ -189,7 +208,6 @@ export default function MedicationsPage() {
             const warningKey = `expiry-${med.id}-${daysUntilExpiration}`;
             
             const lastWarning = localStorage.getItem(warningKey);
-            const todayStr = today.toISOString().split('T')[0];
             
             console.log(`⏰ ${med.name} - Will show expiry warning:`, {
               daysUntilExpiration,
@@ -539,12 +557,164 @@ If you cannot extract a field, use empty string "". Do not include any markdown 
     }
   };
 
+  // Check for drug interactions using Gemini AI
+  const checkDrugInteraction = async (newDrug, currentDrugs) => {
+    try {
+      const geminiApiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+      if (!geminiApiKey || geminiApiKey === 'your_gemini_api_key_here') {
+        console.error('Gemini API key not configured');
+        return null;
+      }
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`;
+
+      // Build current medications list
+      const currentMedsList = currentDrugs.length > 0 
+        ? currentDrugs.map(med => `${med.name} (${med.dosage})`).join(', ')
+        : 'None';
+
+      const requestBody = {
+        contents: [{
+          parts: [{
+            text: `You are a pharmaceutical expert. Analyze potential drug interactions.
+
+NEW MEDICATION: ${newDrug.name} ${newDrug.dosage}
+
+CURRENT MEDICATIONS: ${currentMedsList}
+
+Analyze for drug-drug interactions and provide a response in this EXACT JSON format:
+{
+  "severity": "Critical" | "Moderate" | "Minor" | "None",
+  "hasInteraction": true/false,
+  "explanation": "Detailed explanation of the interaction mechanism and risks",
+  "specificRisks": ["Risk 1", "Risk 2", "Risk 3"],
+  "alternativeSuggestions": ["Alternative 1", "Alternative 2"],
+  "recommendation": "Clear action recommendation"
+}
+
+Severity Levels:
+- Critical: Life-threatening, DO NOT combine
+- Moderate: Requires medical supervision, dose adjustment may be needed  
+- Minor: Monitor for side effects, generally safe
+- None: No known interactions
+
+Return ONLY the JSON object, no markdown formatting.`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+        }
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Gemini API Error:', data);
+        return null;
+      }
+
+      const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      
+      // Clean up response and parse JSON
+      let cleanedResponse = textResponse.trim();
+      cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      
+      const interactionData = JSON.parse(cleanedResponse);
+      
+      console.log('✅ Drug Interaction Check:', interactionData);
+      
+      return interactionData;
+
+    } catch (error) {
+      console.error('Error checking drug interaction:', error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    console.log('📝 FORM SUBMITTED - Current formData:', {
+      startDate: formData.startDate,
+      expirationDate: formData.expirationDate,
+      endDate: formData.endDate,
+      name: formData.name
+    });
 
     setLoading(true);
 
     try {
+      // Check for drug interactions BEFORE adding medication
+      if (medications.length > 0) {
+        toast.loading('🔍 Checking for drug interactions...', { id: 'interaction-check' });
+        
+        const interactionResult = await checkDrugInteraction(
+          { name: formData.name, dosage: formData.dosage },
+          medications
+        );
+
+        toast.dismiss('interaction-check');
+
+        // Store interaction check result in Firestore
+        if (interactionResult) {
+          try {
+            await addDoc(collection(db, 'users', user.uid, 'drugInteractions'), {
+              newDrug: {
+                name: formData.name,
+                dosage: formData.dosage
+              },
+              existingDrugs: medications.map(med => ({
+                name: med.name,
+                dosage: med.dosage
+              })),
+              severity: interactionResult.severity,
+              hasInteraction: interactionResult.hasInteraction,
+              explanation: interactionResult.explanation,
+              timestamp: new Date().toISOString(),
+            });
+          } catch (err) {
+            console.error('Failed to store interaction check:', err);
+            // Non-blocking error - continue anyway
+          }
+        }
+
+        if (interactionResult && interactionResult.hasInteraction) {
+          const severityColors = {
+            Critical: 'danger',
+            Moderate: 'warning', 
+            Minor: 'blue'
+          };
+
+          const severityEmojis = {
+            Critical: '🚨',
+            Moderate: '⚠️',
+            Minor: 'ℹ️'
+          };
+
+          // Store interaction warning for modal
+          setInteractionWarning({
+            ...interactionResult,
+            emoji: severityEmojis[interactionResult.severity],
+            colorClass: severityColors[interactionResult.severity]
+          });
+
+          setLoading(false);
+          return; // Stop here and show modal
+        } else if (interactionResult && !interactionResult.hasInteraction) {
+          toast.success('✅ No interactions detected. Safe to add!', { duration: 2000 });
+        }
+      }
+
       // Request notification permission (non-blocking, silent failure)
       requestNotificationPermission()
         .then(token => {
@@ -594,6 +764,12 @@ If you cannot extract a field, use empty string "". Do not include any markdown 
         userId: user.uid,
       };
 
+      console.log('🔥 SAVING TO FIRESTORE (Manual Form):', {
+        startDate: medicationData.startDate,
+        expirationDate: medicationData.expirationDate,
+        endDate: medicationData.endDate
+      });
+
       await addDoc(collection(db, 'users', user.uid, 'medications'), medicationData);
 
       toast.success('Medication added successfully with notifications!');
@@ -615,7 +791,78 @@ If you cannot extract a field, use empty string "". Do not include any markdown 
         name: '',
         dosage: '',
         times: ['08:00'],
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: getLocalDateString(),
+        endDate: '',
+        instructions: '',
+        quantity: '',
+        expirationDate: '',
+        imageUrl: '',
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to add medication');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const proceedWithAddingMedication = async () => {
+    setInteractionWarning(null);
+    setLoading(true);
+
+    try {
+      const schedule = formData.times.map(time => ({
+        time,
+        repeat: 'daily'
+      }));
+
+      // Calculate refill date if quantity is provided
+      let refillDate = null;
+      let daysRemaining = null;
+      if (formData.quantity) {
+        const quantity = parseInt(formData.quantity);
+        const dosesPerDay = formData.times.length;
+        
+        if (!isNaN(quantity) && dosesPerDay > 0) {
+          daysRemaining = Math.floor(quantity / dosesPerDay);
+          const refillDateObj = new Date();
+          refillDateObj.setDate(refillDateObj.getDate() + daysRemaining);
+          refillDate = refillDateObj.toISOString().split('T')[0];
+        }
+      }
+
+      const medicationData = {
+        name: formData.name,
+        dosage: formData.dosage,
+        schedule,
+        startDate: formData.startDate,
+        endDate: formData.endDate || null,
+        instructions: formData.instructions,
+        quantity: formData.quantity || null,
+        expirationDate: formData.expirationDate || null,
+        refillDate: refillDate,
+        daysRemaining: daysRemaining,
+        imageUrl: formData.imageUrl || null,
+        createdAt: new Date().toISOString(),
+        userId: user.uid,
+      };
+
+      console.log('🔥 SAVING TO FIRESTORE (Pill Scanner):', {
+        startDate: medicationData.startDate,
+        expirationDate: medicationData.expirationDate,
+        endDate: medicationData.endDate
+      });
+
+      await addDoc(collection(db, 'users', user.uid, 'medications'), medicationData);
+
+      toast.success('✅ Medication added successfully!');
+
+      setShowForm(false);
+      setFormData({
+        name: '',
+        dosage: '',
+        times: ['08:00'],
+        startDate: getLocalDateString(),
         endDate: '',
         instructions: '',
         quantity: '',
@@ -651,9 +898,9 @@ If you cannot extract a field, use empty string "". Do not include any markdown 
 
   const markAsTaken = async (medId, medName) => {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
       // Check if already taken today
       if (takenToday[medId]) {
@@ -967,6 +1214,38 @@ If you cannot extract a field, use empty string "". Do not include any markdown 
                   <p className="text-sm text-cyan-800 dark:text-cyan-300">
                     We'll request permission to send you medication reminders when you add this medication.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Drug Interaction Safety Banner */}
+            {medications.length > 0 && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                <div className="flex items-start space-x-3">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-green-900 dark:text-green-200 mb-1">
+                      🛡️ Drug Interaction Check Enabled
+                    </p>
+                    <p className="text-sm text-green-800 dark:text-green-300">
+                      Our AI will automatically check for dangerous interactions with your {medications.length} existing medication{medications.length !== 1 ? 's' : ''} before adding this one.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {medications.slice(0, 3).map((med, i) => (
+                        <span key={i} className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/40 text-xs font-medium text-green-800 dark:text-green-300 rounded-md">
+                          <Pill className="w-3 h-3 mr-1" />
+                          {med.name}
+                        </span>
+                      ))}
+                      {medications.length > 3 && (
+                        <span className="inline-flex items-center px-2 py-1 bg-green-100 dark:bg-green-900/40 text-xs font-medium text-green-800 dark:text-green-300 rounded-md">
+                          +{medications.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1320,6 +1599,145 @@ If you cannot extract a field, use empty string "". Do not include any markdown 
             </motion.div>
           )}
         </div>
+
+        {/* Drug Interaction Warning Modal */}
+        <AnimatePresence>
+          {interactionWarning && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => {
+                setInteractionWarning(null);
+                setLoading(false);
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="card max-w-2xl w-full relative overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Severity Header */}
+                <div className={`p-6 ${
+                  interactionWarning.severity === 'Critical' 
+                    ? 'bg-gradient-to-r from-danger-500 to-danger-600' 
+                    : interactionWarning.severity === 'Moderate'
+                      ? 'bg-gradient-to-r from-warning-500 to-warning-600'
+                      : 'bg-gradient-to-r from-blue-500 to-blue-600'
+                } text-white`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-4xl">{interactionWarning.emoji}</span>
+                      <h2 className="text-2xl font-bold">
+                        {interactionWarning.severity} Interaction Detected
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setInteractionWarning(null);
+                        setLoading(false);
+                      }}
+                      className="p-2 rounded-lg hover:bg-white/20 transition-colors"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <p className="text-white/90">
+                    {formData.name} {formData.dosage} may interact with your current medications
+                  </p>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+                  {/* Explanation */}
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white mb-2 flex items-center space-x-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      <span>What's the Issue?</span>
+                    </h3>
+                    <p className="text-slate-600 dark:text-slate-300">
+                      {interactionWarning.explanation}
+                    </p>
+                  </div>
+
+                  {/* Specific Risks */}
+                  {interactionWarning.specificRisks && interactionWarning.specificRisks.length > 0 && (
+                    <div>
+                      <h3 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center space-x-2">
+                        <AlertTriangle className="w-5 h-5 text-danger-600" />
+                        <span>Potential Risks:</span>
+                      </h3>
+                      <ul className="space-y-2">
+                        {interactionWarning.specificRisks.map((risk, i) => (
+                          <li key={i} className="flex items-start space-x-2">
+                            <span className="text-danger-600 dark:text-danger-400 mt-1">•</span>
+                            <span className="text-slate-600 dark:text-slate-300">{risk}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Alternatives */}
+                  {interactionWarning.alternativeSuggestions && interactionWarning.alternativeSuggestions.length > 0 && (
+                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                      <h3 className="font-bold text-green-900 dark:text-green-200 mb-3 flex items-center space-x-2">
+                        <Sparkles className="w-5 h-5" />
+                        <span>Safer Alternatives:</span>
+                      </h3>
+                      <ul className="space-y-2">
+                        {interactionWarning.alternativeSuggestions.map((alt, i) => (
+                          <li key={i} className="flex items-start space-x-2">
+                            <span className="text-green-600 dark:text-green-400 mt-1">✓</span>
+                            <span className="text-green-800 dark:text-green-300">{alt}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Recommendation */}
+                  <div className="bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-xl border border-cyan-200 dark:border-cyan-800">
+                    <h3 className="font-bold text-cyan-900 dark:text-cyan-200 mb-2 flex items-center space-x-2">
+                      <Bell className="w-5 h-5" />
+                      <span>Recommendation:</span>
+                    </h3>
+                    <p className="text-cyan-800 dark:text-cyan-300">
+                      {interactionWarning.recommendation}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="p-6 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => {
+                      setInteractionWarning(null);
+                      setLoading(false);
+                      toast.info('❌ Medication not added. Please consult your doctor.');
+                    }}
+                    className="flex-1 px-6 py-3 bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    Cancel - Don't Add
+                  </button>
+                  <button
+                    onClick={proceedWithAddingMedication}
+                    className={`flex-1 px-6 py-3 rounded-xl font-medium text-white transition-colors ${
+                      interactionWarning.severity === 'Critical'
+                        ? 'bg-danger-600 hover:bg-danger-700'
+                        : 'bg-warning-600 hover:bg-warning-700'
+                    }`}
+                  >
+                    {interactionWarning.severity === 'Critical' ? '⚠️ Add Anyway (Not Recommended)' : 'Proceed with Caution'}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

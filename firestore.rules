@@ -16,6 +16,21 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
     
+    // AI Insights Cache (per user)
+    match /aiInsights/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // AI Insights History (per user)
+    match /aiInsightsHistory/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      
+      // Weekly snapshots subcollection
+      match /snapshots/{snapshotId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+    }
+    
     // Users collection
     match /users/{userId} {
       allow read, write: if isAuthenticated() && isOwner(userId);
@@ -37,6 +52,11 @@ service cloud.firestore {
       
       // Medication Intake subcollection
       match /medicationIntake/{intakeId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // Drug Interactions subcollection
+      match /drugInteractions/{interactionId} {
         allow read, write: if isAuthenticated() && isOwner(userId);
       }
       

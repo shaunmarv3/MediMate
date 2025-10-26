@@ -17,7 +17,9 @@ import {
   Heart,
   Droplet,
   Footprints,
-  Weight
+  Weight,
+  Bell,
+  X
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -34,6 +36,19 @@ import {
 import Link from 'next/link';
 import { format, isToday, parseISO } from 'date-fns';
 import { getLatestAdherence } from '@/lib/adherenceCalculator';
+import { calculateStreak, get30DayAdherence } from '@/lib/streakCalculator';
+import HealthInsights from '@/components/HealthInsights';
+import { getCachedInsights, refreshInsights, getCacheAge } from '@/lib/insightsCache';
+import InsightsHistorySidebar from '@/components/InsightsHistorySidebar';
+import { 
+  setupNotificationMonitoring, 
+  requestNotificationPermission,
+  checkAdherence,
+  checkExpiringMedications,
+  checkLowStock,
+  checkMissedMedications,
+  checkCriticalMetrics
+} from '@/lib/notificationManager';
 
 ChartJS.register(
   CategoryScale,
@@ -52,7 +67,14 @@ export default function DashboardPage() {
   const [medications, setMedications] = useState([]);
   const [todaysDoses, setTodaysDoses] = useState([]);
   const [adherenceRate, setAdherenceRate] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [insights, setInsights] = useState([]);
+  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [cacheAge, setCacheAge] = useState(null);
+  const [historySidebarOpen, setHistorySidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -78,10 +100,6 @@ export default function DashboardPage() {
     const unsubMeds = onSnapshot(medsQuery, async (snapshot) => {
       const meds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setMedications(meds);
-
-      // Get the latest adherence rate from database
-      const adherence = await getLatestAdherence(user.uid);
-      setAdherenceRate(adherence);
 
       // Get today's medication status
       const today = new Date();
@@ -115,6 +133,145 @@ export default function DashboardPage() {
       unsubMeds();
     };
   }, [user]);
+
+  // Calculate adherence and streak separately (once on mount and when medications change)
+  useEffect(() => {
+    if (!user || medications.length === 0) return;
+
+    let isMounted = true;
+
+    async function calculateStats() {
+      try {
+        // Get the 30-day adherence rate
+        const stats = await get30DayAdherence(user.uid);
+        
+        // Calculate current streak
+        const currentStreak = await calculateStreak(user.uid);
+
+        if (isMounted) {
+          setAdherenceRate(stats.adherenceRate);
+          setStreak(currentStreak);
+        }
+      } catch (error) {
+        console.error('Error calculating stats:', error);
+      }
+    }
+
+    calculateStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, medications.length]); // Only recalculate when medications count changes
+
+  // Fetch AI health insights on page load (with caching)
+  useEffect(() => {
+    if (!user) return;
+
+    async function fetchInsights() {
+      setInsightsLoading(true);
+      
+      try {
+        // Use cached insights (auto-refreshes if > 7 days old)
+        const cachedInsights = await getCachedInsights(user.uid);
+        setInsights(cachedInsights);
+        
+        // Get cache age for display
+        const age = await getCacheAge(user.uid);
+        setCacheAge(age);
+        
+      } catch (error) {
+        console.error('Error fetching insights:', error);
+        
+        // Friendly fallback message
+        setInsights([
+          {
+            type: 'neutral',
+            category: 'general',
+            message: 'Keep logging your health data daily to unlock personalized AI insights! 📊',
+            priority: 1
+          }
+        ]);
+        setCacheAge(null);
+      } finally {
+        setInsightsLoading(false);
+      }
+    }
+
+    fetchInsights();
+  }, [user]);
+
+  // Setup comprehensive notifications
+  useEffect(() => {
+    if (!user) return;
+
+    // Request notification permission
+    requestNotificationPermission();
+
+    // Handle incoming notifications
+    const handleNotification = (notification) => {
+      setNotifications(prev => {
+        // Limit to 10 most recent notifications
+        const updated = [notification, ...prev].slice(0, 10);
+        return updated;
+      });
+    };
+
+    // Setup monitoring for all critical events
+    const cleanup = setupNotificationMonitoring(user.uid, handleNotification);
+
+    return cleanup;
+  }, [user]);
+
+  // Check adherence when it updates
+  useEffect(() => {
+    if (!user || adherenceRate === 0) return;
+    
+    const handleNotification = (notification) => {
+      setNotifications(prev => [notification, ...prev].slice(0, 10));
+    };
+
+    checkAdherence(user.uid, adherenceRate, handleNotification);
+  }, [user, adherenceRate]);
+
+  // Manual refresh function
+  const handleRefreshInsights = async () => {
+    if (!user) return;
+    
+    setInsightsLoading(true);
+    
+    try {
+      const freshInsights = await refreshInsights(user.uid);
+      setInsights(freshInsights);
+      
+      // Update cache age
+      const age = await getCacheAge(user.uid);
+      setCacheAge(age);
+    } catch (error) {
+      console.error('Error refreshing insights:', error);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  // Manual notification check (for testing)
+  const handleCheckNotifications = async () => {
+    if (!user) return;
+
+    console.log('🔔 Manually checking all notifications...');
+
+    const handleNotification = (notification) => {
+      console.log('Notification received:', notification);
+      setNotifications(prev => [notification, ...prev].slice(0, 10));
+    };
+
+    await checkExpiringMedications(user.uid, handleNotification);
+    await checkLowStock(user.uid, handleNotification);
+    await checkMissedMedications(user.uid, handleNotification);
+    await checkCriticalMetrics(user.uid, handleNotification);
+
+    console.log('✅ Notification check complete');
+  };
 
   // Prepare chart data for different metrics
   const getChartData = (type) => {
@@ -267,7 +424,7 @@ export default function DashboardPage() {
             </div>
             <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Adherence Rate</p>
             <p className="text-3xl font-bold text-slate-900 dark:text-white">{adherenceRate}%</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Since account creation</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Last 30 days</p>
           </motion.div>
 
           <motion.div
@@ -315,11 +472,27 @@ export default function DashboardPage() {
             </div>
             <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">Streak</p>
             <p className="text-3xl font-bold text-slate-900 dark:text-white">
-              {adherenceRate >= 80 ? '7' : '0'}
+              {streak}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Days consistent</p>
           </motion.div>
         </div>
+
+        {/* AI Health Insights */}
+        <HealthInsights 
+          insights={insights} 
+          loading={insightsLoading}
+          onRefresh={handleRefreshInsights}
+          onOpenHistory={() => setHistorySidebarOpen(true)}
+          cacheAge={cacheAge}
+        />
+
+        {/* Insights History Sidebar */}
+        <InsightsHistorySidebar
+          userId={user.uid}
+          isOpen={historySidebarOpen}
+          onClose={() => setHistorySidebarOpen(false)}
+        />
 
         {/* Health Metrics Charts */}
         <div>
